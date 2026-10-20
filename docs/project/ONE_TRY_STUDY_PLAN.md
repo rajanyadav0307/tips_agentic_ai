@@ -1,7 +1,7 @@
 # Project Plan 3: Can Machine Learning Fix One-Try Studies of AI Coding Agents?
 
-**Version:** 1 (draft for the owner's approval), 2026-10-20
-**Study:** the "one-try study" (Paper 2). It reuses the data pipeline of Paper 1 ([PROJECT_PLAN.md](PROJECT_PLAN.md)).
+**Version:** 2 (final check done), 2026-10-20
+**Study:** the "one-try study" (Paper 2). It builds its own data tables and reports; it reuses Paper 1's tested *code* (downloader, fair-comparison estimator) where useful ([PROJECT_PLAN.md](PROJECT_PLAN.md)).
 **Rules:**
 - This study follows its own complete standard data science procedure (§5: problem, collection, cleaning, EDA, features, modelling, evaluation, communication), with a report at every step.
 - The locked engineering standards apply unchanged (PROJECT_PLAN.md §7).
@@ -22,6 +22,31 @@
   - machine learning on the bug report was still off by about 8;
   - adding **how other AIs did on the same bug** brought the error under 1 point.
 - **What we deliver:** a paper and code that tell researchers when one-try studies can be trusted, and how to correct them.
+
+## How the machine learning works (in plain words)
+
+**The goal:** with only one try per bug, find out whether a habit such as "testing first" really helps, without being fooled by easy bugs.
+
+**Example:** Bug A is easy and Bug B is hard. With one try each, the AI tested first on Bug A and fixed it, and did not test first on Bug B and failed. A simple comparison says "testing first fixes bugs", which is wrong: Bug A was simply easy.
+
+The machine learning does five jobs:
+
+1. **Turn the bug report into numbers.** A computer cannot read text directly.
+   - **Simple way:** count the important words (TF-IDF), then squeeze them into 100 numbers (SVD). Similar reports get similar numbers.
+   - **Stronger way (optional, uses the GPU if there is one):** a small language model reads the report and gives numbers that capture its meaning (sentence embeddings).
+2. **Two helper predictions for every bug,** made with gradient boosting (many small decision trees; random forests as a check):
+   - **Model A:** how likely is this bug to be fixed? (How easy does it look?)
+   - **Model B:** how likely is the AI to test first on this bug?
+3. **Remove the easy-bug effect (double machine learning).** For each try, keep only the *surprise*:
+   - was it fixed more or less than Model A expected?
+   - did it test first more or less than Model B expected?
+
+   If trying "test first" *more than expected* goes with being fixed *more than expected*, the habit really helps. If not, it only looked helpful because of easy bugs.
+4. **Give the models better information, step by step** (the "correction ladder" in §4): only the bug report → plus the size of the human fix → plus **how other AIs did on the same bug**. A small IRT model also turns the other AIs' results into one "difficulty score". In the pilot, the "other AIs" information worked best.
+5. **Keep it honest:**
+   - **cross-fitting:** each model is trained on some bugs and used on *other* bugs, so it cannot memorise answers;
+   - **made-up data first:** every method is tested on fake data where the true answer is known, and must find it;
+   - **real answer key:** every method is compared with the answer from our many-tries data, which the methods never see.
 
 ## 1. Is our data useful for this? (checked 2026-10-20)
 
@@ -59,18 +84,20 @@
   - single-run noise: [Identical Runs, Different Results](https://arxiv.org/abs/2609.33812).
 - Full search notes: [ML_BRAINSTORM.md](ML_BRAINSTORM.md).
 
-## 3. Research questions and hypotheses (frozen in Phase 1, before any full run)
+## 3. Research questions and hypotheses (frozen in Step 1, before any modelling run)
 
 | RQ | Question | Hypothesis and decision rule |
 | --- | --- | --- |
 | RQ1 | With one try per bug, how far are the usual analyses from the many-tries answer? | **H1:** the average absolute error of the simple comparison is above 2 points (95% CI above 2) |
-| RQ2 | Which correction fixes them? | **H2:** corrections that use only the bug report leave an average error above 2 points. **H3:** adding other AIs' results brings the average error within ±2 points (equivalence test, as in Paper 1) |
+| RQ2 | Which correction fixes them? | **H2:** corrections that use only the bug report (rungs 1–3) leave an average error above 2 points. **H3:** adding other AIs' results (rung 5) brings the average error within ±2 points (equivalence test: 90% CI inside ±2, as in Paper 1) |
 | RQ3 | When does the correction fail? | **H4:** its benefit shrinks when fewer other AIs tried the bug and when the other AIs agree less with this AI about which bugs are hard (pre-specified slope tests). The older AI vs Nebius is the planned hard case |
-| RQ4 | How many tries per bug are enough without any correction? | Descriptive: error of the within-bug analysis using 2, 3, 5 and 10 tries per bug |
+| RQ4 | How many tries per bug are enough without any correction? | Descriptive: error of the within-bug analysis using 2, 3, 5 and 10 tries per bug (older AI and Nebius only; NVIDIA has at most 3 tries per bug) |
 
 - **Also reported:**
   - **confidence intervals:** do each method's 95% intervals contain the many-tries answer about 95% of the time?
   - **conclusions:** does the method reach the same conclusion (helps, hurts, or no difference)?
+- **How averages get their CIs:** the error of each method is first averaged over draws within a comparison, then over comparisons. CIs come from 2,000 bootstrap resamples of comparisons; comparisons for the same AI setup are resampled together.
+- **The answer key is not perfect:** each many-tries answer has its own uncertainty, which sets a "noise floor" for the error. It is reported next to every result, and the ±2-point margin is well above it (pilot answer keys: about ±0.6 points).
 - **Multiple testing:** H1–H4 are Holm-corrected.
 
 ## 4. Study design
@@ -79,14 +106,16 @@
   - NVIDIA 53;
   - older AI 10;
   - Nebius 1;
-  - plus first-move choices, which are added in Phase 1.
-- **Many-tries answer (reference):** the within-bug fair comparison from Paper 1, using all tries. There are two kinds:
+  - plus first-move choices.
+
+  The final list comes from the EDA inventory (Step 4) and is fixed before modelling.
+- **Many-tries answer (reference):** the within-bug fair comparison (Paper 1's estimator), using all tries. For the older AI the groups are bug × evaluation day, because of its hidden model versions. There are two kinds:
   - **true experiments:** first-move choices (step 0), where every try sees identical input;
   - **best available:** choices made mid-run.
 
   Results are reported separately for the two kinds.
 - **One-try copies:**
-  - keep one random try per bug;
+  - keep one random try per bug, **from the same bugs as the answer key** so both describe the same bugs (secondary: all bugs);
   - repeat with different random draws (default 20, with a check that more draws change averages by less than 0.2 points);
   - for RQ4, keep 2, 3, 5 or 10 tries per bug.
 - **Correction ladder** (the same for every comparison):
@@ -95,7 +124,7 @@
   | --- | --- | --- |
   | 0 | Simple difference | — |
   | 1 | Linear regression | Bug report facts: length, code block, error trace, names a file, repository, language, task type |
-  | 2 | Double machine learning with gradient boosting | + bug report text (TF-IDF → 100 dimensions) |
+  | 2 | Double machine learning with gradient boosting (random forests as a check) | + bug report text (TF-IDF → 100 dimensions) |
   | 3 | Same, with text embeddings (optional, GPU) | + sentence embeddings of the report |
   | 4 | Same | + size of the human fix (files and lines changed); available to anyone analysing a benchmark |
   | 5 | Same | + other AIs' success rate on the same bug, and how many other AIs tried it |
@@ -237,7 +266,7 @@ Each step is one command, `agent-tips onetry <step>`. `agent-tips onetry run-all
 
 At each checkpoint: a plain-words summary, a short "what to check" list, and a push of the branch (commits only as `rajanyadav0307`, no assistant attribution).
 
-## 6b. Engineering (same standards as Paper 1)
+## 7. Engineering (same standards as Paper 1)
 
 - **Code:**
   - `src/agent_tips/onetry/`: `collect.py`, `clean.py`, `eda.py`, `features.py`, `references.py`, `simulate.py`, `corrections.py`, `evaluate.py`, `figures.py`, `report.py`;
@@ -254,7 +283,7 @@ At each checkpoint: a plain-words summary, a short "what to check" list, and a p
   - fixed seeds and row order.
 - **Docs:** each step report is generated by code and listed in the MkDocs navigation under "Paper 2".
 
-## 7. Risks
+## 8. Risks
 
 | Risk | What we do |
 | --- | --- |
@@ -265,9 +294,9 @@ At each checkpoint: a plain-words summary, a short "what to check" list, and a p
 | Someone publishes the same idea first | Re-check before writing; our distinct parts are the many-tries answer, the cross-AI correction, and when it fails |
 | Other AIs' results are not always available | The paper states when the correction applies (benchmarks with many agents' logs) and when it does not (brand-new tasks) |
 
-## 8. Definition of done
+## 9. Definition of done
 
-- [ ] RQ1–RQ4 answered from `one_try_results.parquet`; hypotheses frozen before the full run.
+- [ ] RQ1–RQ4 answered from `outputs/onetry/results.parquet`; rules frozen (tag `one-try-plan-v1`) before any modelling run.
 - [ ] Results reported separately for true experiments and mid-run choices, and for each dataset.
 - [ ] Every number, figure and table in Paper 2 is produced by the pipeline.
 - [ ] Tests ≥ 85% coverage; CI passes on 4 platforms; two runs give identical results.
