@@ -4,6 +4,16 @@
 
 ### Added
 
+- Phase C:
+  - `agent-tips features`: a shared action labeler (SQL), try features (arms, counts, localization) and issue features;
+  - label validation: observation check, plus a blind second labeling in two rounds (`docs/data/label_validation/`);
+  - generated `docs/05_feature_report.md` with the tip-compliance chart.
+
+### Fixed
+
+- File names inside `/testbed` no longer count as test scripts. The exploratory code had this bug.
+- Test-tool names inside paths no longer count as test-suite runs.
+
 - Phase B:
   - `agent-tips clean` (shared `tries`/`steps` tables, flags, version batches, funnel, generated `docs/03_cleaning_report.md`);
   - `agent-tips eda` (7 charts, `docs/04_eda_report.md`);

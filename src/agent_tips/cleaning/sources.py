@@ -72,7 +72,8 @@ def older_ai_steps(src: str, model: str) -> str:
       CAST(1 AS INTEGER) AS n_calls,
       CAST(greatest(length(text) - length(cmd), 0) AS INTEGER) AS thought_len,
       CAST(length(coalesce(obs, '')) AS INTEGER) AS obs_len,
-      left(coalesce(obs, ''), 300) AS obs_head
+      left(coalesce(obs, ''), 300) AS obs_head,
+      right(coalesce(obs, ''), 300) AS obs_tail
     FROM a
     """
 
@@ -110,7 +111,8 @@ def _tool_steps(try_id_sql: str, from_sql: str, messages: str, reasoning: bool) 
       CAST(coalesce(len(m.tool_calls), 0) AS INTEGER) AS n_calls,
       CAST({thought} AS INTEGER) AS thought_len,
       CAST(length(coalesce(obs, '')) AS INTEGER) AS obs_len,
-      left(coalesce(obs, ''), 300) AS obs_head
+      left(coalesce(obs, ''), 300) AS obs_head,
+      right(coalesce(obs, ''), 300) AS obs_tail
     FROM a
     """
 

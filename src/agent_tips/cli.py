@@ -17,7 +17,6 @@ from agent_tips.utils.device import select_device, torch_available
 
 # Steps not built yet: subcommand -> (procedure step, plan phase that implements it)
 PENDING: dict[str, tuple[str, str]] = {
-    "features": ("Step 5: create features", "C"),
     "model": ("Step 6: model and analyze", "D"),
     "evaluate": ("Step 7: evaluate", "D"),
     "figures": ("Step 8: communicate", "E"),
@@ -60,6 +59,15 @@ def _eda(_: argparse.Namespace) -> int:
     return 0
 
 
+def _features(_: argparse.Namespace) -> int:
+    from agent_tips.features import build, report
+
+    cfg = load_config()
+    build.run(cfg)
+    print(f"report: {report.build(cfg)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(prog="agent-tips", description=__doc__)
@@ -72,6 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     dl.add_argument("--dry-run", action="store_true", help="only show what would be downloaded")
     sub.add_parser("clean", help="Step 3: build clean tries/steps tables and the cleaning report")
     sub.add_parser("eda", help="Step 4: exploration charts and their numbers")
+    sub.add_parser("features", help="Step 5: labels, label validation, issue and try features")
     for name, (step, _) in PENDING.items():
         sub.add_parser(name, help=step)
     return parser
@@ -88,6 +97,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _clean(args)
     if args.command == "eda":
         return _eda(args)
+    if args.command == "features":
+        return _features(args)
     step, phase = PENDING[args.command]
     print(f"'{args.command}' ({step}) is not implemented yet; it is added in phase {phase}.")
     return 2

@@ -65,6 +65,7 @@ STEPS: tuple[Column, ...] = (
     Column("thought_len", "int32", "Characters of reasoning text in this turn"),
     Column("obs_len", "int32", "Characters of the environment's reply"),
     Column("obs_head", "string", "First 300 characters of the environment's reply"),
+    Column("obs_tail", "string", "Last 300 characters of the environment's reply (test summaries)"),
 )
 
 

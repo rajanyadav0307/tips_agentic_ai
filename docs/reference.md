@@ -18,6 +18,14 @@
 
 ::: agent_tips.eda.charts
 
+::: agent_tips.features.labels
+
+::: agent_tips.features.build
+
+::: agent_tips.features.validate
+
+::: agent_tips.features.report
+
 ::: agent_tips.utils.device
 
 ::: agent_tips.utils.seed

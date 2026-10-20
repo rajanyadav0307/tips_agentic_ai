@@ -131,3 +131,4 @@ Commands are truncated to 500 characters and observations to their first 300 cha
 | `thought_len` | int32 | Characters of reasoning text in this turn |
 | `obs_len` | int32 | Characters of the environment's reply |
 | `obs_head` | string | First 300 characters of the environment's reply |
+| `obs_tail` | string | Last 300 characters of the environment's reply (test summaries) |

@@ -57,7 +57,7 @@
 | 2 Data | ✅ Done (Phase A) | 121 pinned, checksummed files (24.35 GB); `agent-tips download`; loaders; inventory in `docs/02_data_inventory.md` |
 | 3 Clean | ✅ Done (Phase B) | `agent-tips clean`: 402,043 tries and 26.5M steps in one shared format; funnels match the exploration exactly; `docs/03_cleaning_report.md` |
 | 4 EDA | ✅ Done (Phase B) | `agent-tips eda`: 7 charts plus `docs/04_eda_report.md` |
-| 5 Features | ⚠️ Exploratory only | Separate regex labelers per script; labels not validated |
+| 5 Features | ✅ Done (Phase C) | Shared labeler (151 tests); observation check; blind second labeling in 2 rounds (κ 0.90, then 0.86 on a fresh sample); issue and localization features; `docs/05_feature_report.md` |
 | 6 Model | ⚠️ Exploratory only | Same-bug comparisons, bootstrap and permutation exist; no regression models or FDR |
 | 7 Evaluate | ⚠️ Partial | Robustness checks exist for the older AI only |
 | 8 Communicate | ❌ Missing | — |
@@ -270,7 +270,11 @@ The label-validation sample (C2) is saved as an easy-to-read spreadsheet, so the
 - **Depends on:** C1–C4.
 - **Effort:** 1 h.
 
-**Checkpoint C:** validated labels and the feature report; plain-words summary to the owner.
+**Checkpoint C:** validated labels and the feature report; plain-words summary to the owner. ✅ **Completed 2026-10-20**; awaiting the owner's review. Changes made during the phase:
+- the labeler tests found the `/testbed` bug in the exploratory code, which is fixed;
+- a second validation round on a fresh sample was added after fixing the rules from round 1;
+- replies now keep their last 300 characters as well (`obs_tail`), so test summaries can be checked;
+- `repro_create` recall is 73%, so Step 7 adds a broader-definition sensitivity analysis.
 
 ---
 
