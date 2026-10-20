@@ -3,7 +3,9 @@
 **Version:** 1 (draft for the owner's approval), 2026-10-20
 **Study:** the "one-try study" (Paper 2). It reuses the data pipeline of Paper 1 ([PROJECT_PLAN.md](PROJECT_PLAN.md)).
 **Rules:**
-- The locked 8-step data science procedure and the locked engineering standards apply unchanged (PROJECT_PLAN.md §1 and §7).
+- This study follows its own complete standard data science procedure (§5: problem, collection, cleaning, EDA, features, modelling, evaluation, communication), with a report at every step.
+- The locked engineering standards apply unchanged (PROJECT_PLAN.md §7).
+- Work happens on the git branch `one-try-study`.
 - The assistant does all the work; the owner reviews at each checkpoint, and the next phase starts only after approval.
 - Commits and pushes come only from `rajanyadav0307`, with no assistant attribution.
 
@@ -112,73 +114,145 @@
 
   Scores are averaged over draws and comparisons, by dataset, by behaviour type, and for experiments vs non-experiments.
 
-## 5. Phases (each ends with a plain-words summary and the owner's approval)
+## 5. Standard data science procedure for this study
 
-### Phase 0: Housekeeping
-- **What:** Paper 1 is finished but only saved locally (3 commits, not pushed). Default: push it and tag `v1.0.0` first, so Paper 2 starts from a clean, released base.
-- **Done when:** the owner decides; then CI passes.
+This study runs its **own** complete procedure, with its own code, data files and report at every step. It does not borrow finished tables from Paper 1. It may reuse Paper 1's *code* (for example the downloader and the fair-comparison estimator), but every table it uses is rebuilt and reported here.
 
-### Phase 1: Problem and data (Steps 1–2)
-- **1.1 Freeze the rules:** RQ1–RQ4, hypotheses, the correction ladder, metrics and decision rules go into `docs/one_try/01_problem.md`, tagged `one-try-plan-v1` before any full run.
-- **1.2 Data inventory:** list every qualifying comparison (behaviour × AI), add first-move comparisons, and record how many bugs have other-AI results and how strongly the AIs agree. Output: `docs/one_try/02_data.md`.
-- **1.3 Novelty re-check,** dated, in the inventory.
-- **Done when:** the tag exists and the inventory lists every comparison with its counts.
+| Step | Name | Question it answers | Report |
+| --- | --- | --- | --- |
+| 1 | Problem definition | What exactly do we test, and how do we judge success? | `docs/one_try/01_problem.md` |
+| 2 | Data collection | Which raw data do we need, where does it come from, and is it intact? | `docs/one_try/02_data_collection.md` |
+| 3 | Data cleaning | Which records are usable, and why were the others removed? | `docs/one_try/03_cleaning.md` |
+| 4 | Exploratory data analysis (EDA) | What does the data look like, and which comparisons are possible? | `docs/one_try/04_eda.md` |
+| 5 | Feature engineering | What information may each correction method use, without leaks? | `docs/one_try/05_features.md` |
+| 6 | Modelling | The answer key, the one-try copies and the correction methods | `docs/one_try/06_modelling.md` |
+| 7 | Evaluation | Which method gets closest to the answer, and how robust is that? | `docs/one_try/07_evaluation.md` |
+| 8 | Communication | Figures, tables, paper and release | `paper2/`, `docs/one_try/08_results.md` |
 
-### Phase 2: Prepare, explore, features (Steps 3–5)
-- **2.1 New tables** (raw data → `data/processed/one_try/`):
-  - `bug_text.parquet`: report text, repository, language, task type;
-  - `fix_size.parquet`: human fix size, from NVIDIA's reference patches and the older AI's gold patches;
-  - `cross_ai.parquet`: for each bug and AI, the other AIs' success rate (leave-this-AI-out), the number of other AIs, and their agreement.
-- **2.2 Exploration** (`docs/one_try/04_eda.md`):
-  - how much the bug vs luck decides outcomes;
-  - how strongly AIs agree on difficulty (heat map);
-  - how weakly the report predicts difficulty.
-- **2.3 Text features:** TF-IDF → SVD (cached); optional sentence embeddings (GPU if available, CPU fallback).
-- **Done when:** the tables pass tests (no leakage: the studied AI never appears in its own other-AI features) and the EDA report is generated.
+Each step is one command, `agent-tips onetry <step>`. `agent-tips onetry run-all` runs all steps in order. Data for this study lives in `data/onetry/` and results in `outputs/onetry/`.
 
-### Phase 3: Model (Step 6)
-- **3.1** Many-tries answers for all comparisons (reusing Paper 1's estimator) → `references.parquet`.
-- **3.2** One-try simulator (k tries per bug, fixed seeds).
-- **3.3** Correction ladder in `corrections.py`.
-  - **Synthetic tests with a known truth:** each method must be right when it has the information it needs, and wrong in the expected direction when it does not.
-- **3.4 Go/no-go:** reproduce the pilot within the code base on a small subset.
+### Step 1: Problem definition
+- **Do:**
+  - write the research questions RQ1–RQ4 and hypotheses H1–H4 (§3);
+  - define the target ("many-tries answer"), the metrics, the ±2-point margin, the correction ladder (§4) and the decision rules;
+  - state the scope and assumptions;
+  - re-check novelty.
+- **Output:** `01_problem.md`, tagged `one-try-plan-v1` before any modelling run.
+- **Done when:** the tag exists; every hypothesis has a test and a decision rule.
+
+### Step 2: Data collection
+- **Do:**
+  - list the sources this study needs:
+    - the three trajectory datasets;
+    - the human fixes (gold patches for the older AI; NVIDIA reference patches);
+    - all AI sizes in the older dataset (8B, 70B, 405B) as "other AIs";
+  - verify the pinned downloads (revisions, SHA-256);
+  - extract only the fields this study needs into `data/onetry/raw/`:
+    - one row per try: bug ID, AI setup, outcome, actions per step;
+    - one row per bug: report text and human fix.
+- **Output:** `02_data_collection.md`, with sources, licences, revisions, fields used and row counts per source; extraction manifest with checksums.
+- **Done when:** every source is pinned and verified, and row counts match the source datasets.
+
+### Step 3: Data cleaning
+- **Do:** apply written rules, each counted in a funnel:
+  - **outcome:** keep tries whose outcome is known;
+  - **identical input:** keep tries whose bug text matches the most common text for that bug;
+  - **bug ID:** harmonise bug IDs across datasets, so "other AIs on the same bug" is matched correctly;
+  - **report text:** strip the agent framework's instruction wrapper, so only the real bug report remains;
+  - **fix size:** parse the human fix into files and lines changed;
+  - **duplicates:** remove them;
+  - **checks:** check for missing values and outliers (for example extreme step counts);
+  - **version flag:** mark the older AI's evaluation day as the hidden model-version proxy.
+- **Output:** `data/onetry/clean/{tries,bugs,setups}.parquet`; `03_cleaning.md` with the funnel, the rules and a data dictionary.
+- **Done when:** every removed row is explained by a rule; unit tests cover each rule.
+
+### Step 4: Exploratory data analysis
+- **Do:**
+  - outcomes by AI setup;
+  - how much the bug vs luck decides the outcome;
+  - how strongly different AIs agree about which bugs are hard (heat map);
+  - how well the report alone hints at difficulty;
+  - how often each behaviour happens, and in how many bugs both choices occur;
+  - which comparisons qualify (at least 100 such bugs), first-move experiments included;
+  - how much other-AI information each comparison has.
+- **Output:** `04_eda.md` with charts and a comparison inventory (`outputs/onetry/inventory.parquet`). Counts and descriptions only; no method results.
+- **Done when:** every qualifying comparison is listed with its counts, and every chart's numbers are saved.
+
+### Step 5: Feature engineering
+- **Do:** build the information the correction methods may use, per bug:
+  - report facts (length, code block, error trace, names a file, repository, language, task type);
+  - report text (TF-IDF → 100 dimensions; optional sentence embeddings, GPU if available);
+  - human-fix size;
+  - other-AI features: the leave-this-AI-out success rate, the number of other AIs, and an IRT difficulty score.
+- **Leakage tests:**
+  - the studied AI's own results never appear in its features;
+  - text models are fitted inside training folds only.
+- **Output:** `data/onetry/features/`; `05_features.md` (feature dictionary, coverage, leakage checks).
+- **Done when:** the leakage tests pass, and the coverage of every feature is reported.
+
+### Step 6: Modelling
+- **Do:**
+  - **answer key:** the many-tries answer for every qualifying comparison (fair within-bug comparison, with CIs);
+  - **one-try simulator:** one try per bug, many random draws; k tries per bug for RQ4;
+  - **correction ladder (§4):**
+    - simple comparison;
+    - linear regression;
+    - double machine learning with gradient boosting and with random forests;
+    - a propensity-weighted (AIPW) check;
+  - fixed hyper-parameters and cross-fitting split by bug;
+  - **synthetic data with a known truth:** each method must be right when it has the needed information, and wrong in the expected direction when it does not;
+  - **go/no-go:** reproduce the pilot.
+- **Output:** `src/agent_tips/onetry/{references,simulate,corrections}.py`; `06_modelling.md`.
 - **Done when:** the synthetic tests pass on CI and the pilot is reproduced.
 
-### Phase 4: Evaluate (Step 7)
-- **4.1** Full run: all comparisons × draws × rungs → `one_try_results.parquet`. Runs in the background with checkpoints; the target is under 1 day of laptop time.
-- **4.2** RQ1–RQ4, interval coverage, conclusion agreement, and the hard case (older AI vs Nebius).
-- **4.3 Robustness:**
-  - learners (boosting, random forest, linear);
-  - text dimensions;
-  - number of draws;
-  - NVIDIA's filtering;
-  - experiments vs non-experiments.
-- **4.4** Reproducibility: two full runs, identical results.
-- **Done when:** every hypothesis has a result row and the robustness table has a plain-words verdict.
+### Step 7: Evaluation
+- **Do:**
+  - **full run:** all comparisons × draws × methods;
+  - **scores:** error, absolute error, sign and conclusion agreement, and interval coverage;
+  - **results:** RQ1–RQ4 with Holm correction; the hard case (older AI vs Nebius);
+  - **robustness:** learners, text dimensions, number of draws, NVIDIA's filtering, experiments vs mid-run choices;
+  - **reproducibility:** two full runs must give identical results.
+- **Output:** `outputs/onetry/results.parquet`; `07_evaluation.md`.
+- **Done when:** every hypothesis has a result and a plain-words verdict, and the two runs match.
 
-### Phase 5: Communicate (Step 8)
-- **5.1 Figures** (a generated `numbers.tex` holds every paper number):
-  - the easy/hard bug example;
-  - error by correction (main figure);
-  - when the correction fails;
-  - how many tries are enough;
-  - interval coverage.
-- **5.2 Tables:** data, comparisons, main results.
-- **5.3** Paper 2 draft in `paper2/` (ACM format).
-- **5.4** Docs pages, README section, CHANGELOG, release `v2.0.0`.
+### Step 8: Communication
+- **Do:**
+  - figures (the easy/hard bug example, error by method, when the correction fails, how many tries are enough, interval coverage) and tables, all generated;
+  - `numbers.tex`;
+  - Paper 2 draft in `paper2/`;
+  - docs site pages and README section;
+  - CHANGELOG and release `v2.0.0`.
 - **Done when:** the paper compiles, every number comes from the results files, and CI passes on the tag.
 
-## 6. Engineering (same standards as Paper 1)
+## 6. Phases and checkpoints
 
-- **Code** in the same package:
-  - `src/agent_tips/onetry/`: `data.py`, `references.py`, `simulate.py`, `corrections.py`, `evaluate.py`, `report.py`, `figures.py`;
-  - CLI `agent-tips onetry prepare | run | evaluate | figures`, also callable from `run-all`.
-- **New dependency:** `scikit-learn` (installers for all 4 platforms). Text embeddings stay optional in the `gpu` extra.
+| Phase | Steps | Checkpoint (owner approves before the next phase) |
+| --- | --- | --- |
+| 0 | Setup | Branch `one-try-study` created ✅. Paper 1's local work stays unpublished until the owner decides |
+| A | 1 Problem, 2 Collection | Rules frozen and tagged; data sources verified and extracted |
+| B | 3 Cleaning, 4 EDA | Clean tables with funnel; EDA report and comparison inventory |
+| C | 5 Features | Feature tables with leakage checks |
+| D | 6 Modelling, 7 Evaluation | Answer key, methods, full results, robustness |
+| E | 8 Communication | Paper 2 draft and release |
+
+At each checkpoint: a plain-words summary, a short "what to check" list, and a push of the branch (commits only as `rajanyadav0307`, no assistant attribution).
+
+## 6b. Engineering (same standards as Paper 1)
+
+- **Code:**
+  - `src/agent_tips/onetry/`: `collect.py`, `clean.py`, `eda.py`, `features.py`, `references.py`, `simulate.py`, `corrections.py`, `evaluate.py`, `figures.py`, `report.py`;
+  - CLI `agent-tips onetry <step>`.
+- **Config:** a `onetry:` section in `configs/default.yaml` (draws, folds, margin, minimum bugs per comparison, seeds).
+- **New dependency:** `scikit-learn` (installers for all 4 platforms); sentence embeddings stay optional in the `gpu` extra.
 - **Checks:**
-  - tests with synthetic truths, plus an end-to-end test on the larger fake project;
+  - unit tests per cleaning rule and per method;
+  - synthetic-truth tests;
+  - an end-to-end test on a fake project;
   - coverage ≥ 85%;
-  - ruff, mypy, and CI on 4 platforms;
-  - fixed seeds and fixed row order.
+  - ruff, mypy and pre-commit;
+  - CI on 4 platforms;
+  - fixed seeds and row order.
+- **Docs:** each step report is generated by code and listed in the MkDocs navigation under "Paper 2".
 
 ## 7. Risks
 
