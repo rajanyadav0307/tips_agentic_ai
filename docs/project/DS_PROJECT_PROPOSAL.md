@@ -37,7 +37,7 @@
 - NVIDIA removed tries that ran out of steps. For the newer AIs we therefore can't see whether testing first makes them run out of room.
 - Only the first move, and pairs of tries with identical histories, are true coin flips. Later behaviours such as "check your fix" are less certain.
 
-**Next steps:** paper outline, a "why" analysis, and a person spot-checking a sample of the labels.
+**Next steps:** paper outline, a "why" analysis, and automatic validation of the labels (no human effort; see the project plan, task C2).
 
 ## Findings at a glance
 
@@ -200,7 +200,7 @@ The detailed plan below is for writing the paper.
 
 ## Data and feasibility
 
-All numbers come from regex-based action labels. A human spot-check is still to be done.
+All numbers come from regex-based action labels. Label validation (task C2 in the project plan) is still to be done.
 
 ### Older AI: nebius/SWE-agent-trajectories
 
@@ -278,7 +278,7 @@ Ideas considered and dropped during the search (label noise, memorization, run-t
 - **Fair comparisons.** Stratified differences in means within the same issue (and the same day for the older AI); exact-fork comparisons; 95% intervals from resampling whole issues; within-group permutation tests; Manski-style bounds for undated runs.
 - **Heterogeneity.** Subgroup estimates (done); causal forests or DR-learners (optional).
 - **Mechanism.** Context exhaustion and step counts (done); localization timing (to do).
-- **Validation.** A human spot-check of action labels on about 200 tries per dataset, reporting agreement (target κ ≥ 0.8).
+- **Validation (no human effort).** Each label is checked against the computer's reply (e.g. a file-created message) to estimate precision. The assistant also labels 600 sampled actions blind, and agreement is measured with Cohen's κ (target ≥ 0.8). This is reported as AI-assisted validation (plan task C2).
 - **Multiple comparisons.** Report every tip × AI estimate; apply Benjamini–Hochberg FDR to secondary results.
 
 ## Go/no-go checks
@@ -286,7 +286,7 @@ Ideas considered and dropped during the search (label noise, memorization, run-t
 1. **Passed.** The estimate is stable when strata are made finer: −3.5 to −4.0 for day, 6-hour, hour and 60-minute-gap batches, and −2.8 for 10-minute gaps. The hour does not predict the first action within a day (p = 0.45).
 2. **Passed.** Positivity: at the hour level, 808 issues and 5,342 runs remain in groups that contain both arms.
 3. **Passed with day batches.** With undated runs added back realistically the estimate is −3.1; the rough worst case is −1.4. With hour batches the adversarial worst case reaches +0.6, so report the bounds.
-4. **Partly done.** The automated label check passed. A human spot-check (target κ ≥ 0.8) is still open and low-risk for the older AI, because labels come from literal command names. It matters more for NVIDIA's multilingual shell commands.
+4. **Partly done.** The automated label check passed. Automatic label validation (target κ ≥ 0.8; plan task C2) is still open and low-risk for the older AI, because labels come from literal command names. It matters more for NVIDIA's multilingual shell commands.
 5. **Done.** Nebius newer AI: the method works (2,070 exact forks at step 0), but it tests first in 97.9% of runs, so the main question cannot be tested on it.
 6. **Done.** Modern-AI evidence: in NVIDIA's data, four newer AIs vary in how often they test first (10% to 98%). Same-bug and near-coin-flip estimates are about zero.
 
@@ -296,7 +296,7 @@ Ideas considered and dropped during the search (label noise, memorization, run-t
 - **Residual version mixing** within an evaluation day (older AI): addressed with finer strata and sensitivity analysis.
 - **Survivorship in NVIDIA's data.** Tries that hit the step limit or had no patch were removed, and 16–18% of outcomes are unknown. This can hide harm that works through running out of steps, and makes newer-AI results conditional on finishing.
 - **Mid-run behaviours are not coin flips.** "Check your fix" and other later tips are compared within the same bug, but tries can still differ in how the run went. Report them as weaker evidence than first-step effects.
-- **Label heuristics.** Actions are detected from command names and shell patterns across 9 languages and need a human spot-check.
+- **Label heuristics.** Actions are detected from command names and shell patterns across 9 languages and are validated automatically: against the computer's replies, plus a blind second labeling by the assistant, disclosed as AI-assisted.
 - **Multiple comparisons.** Many tips × AIs; correct for false discoveries.
 - **External validity.** Six open-weight AIs in two scaffolds (SWE-agent, OpenHands). Closed frontier models (GPT, Claude, Gemini) are not covered.
 - **Licensing.** The Nebius datasets are CC BY 4.0; the SWE-agent card also notes the Llama 3.1 license for model outputs. NVIDIA Open-SWE-Traces is CC BY 4.0.
@@ -305,7 +305,7 @@ Ideas considered and dropped during the search (label noise, memorization, run-t
 
 1. **Paper outline:** sections, figures and where each finding goes.
 2. **"Why" analysis:** localization timing (needs gold patches from nebius/SWE-bench-extra).
-3. **Human spot-check** of action labels (about 200 tries per dataset).
+3. **Automatic label validation:** checks against the computer's replies, plus a blind second labeling of 600 actions (plan task C2).
 4. **False-discovery correction** for the secondary results.
 5. **Re-check related work** right before submission.
 

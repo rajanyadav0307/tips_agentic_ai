@@ -70,7 +70,7 @@ The effect is consistently negative. It is somewhat smaller when the issue inclu
 
 - **Modern-agent evidence for the main finding.** Find another public dataset where an agent sometimes skips reproduction, or run a small randomized experiment (prompt with vs. without the tip).
 - **Mechanism through localization timing.** Needs gold patches from nebius/SWE-bench-extra.
-- **A human spot-check of the action labels.**
+- **Validation of the action labels** (automatic, no human effort; plan task C2).
 
 ## Code and outputs
 
