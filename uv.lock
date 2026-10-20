@@ -61,7 +61,7 @@ docs = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.1" },
     { name = "huggingface-hub", specifier = ">=0.25" },
-    { name = "matplotlib", specifier = ">=3.9" },
+    { name = "matplotlib", specifier = ">=3.10" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pyarrow", specifier = ">=15" },

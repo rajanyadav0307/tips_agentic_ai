@@ -50,6 +50,20 @@ def _older_ai_rows() -> list[dict[str, Any]]:
                         "system_prompt": "",
                         "text": "Reproduce it.\n```\ncreate reproduce.py\n```",
                     },
+                    {
+                        "cutoff_date": "",
+                        "mask": False,
+                        "role": "user",
+                        "system_prompt": "",
+                        "text": "[File: /r/reproduce.py (1 lines total)]\n(Open file: /r/reproduce.py)",
+                    },
+                    {
+                        "cutoff_date": "",
+                        "mask": True,
+                        "role": "ai",
+                        "system_prompt": "",
+                        "text": "Edit it.\n```\nedit 1:1\nprint(1)\nend_of_edit\n```",
+                    },
                 ],
                 "exit_status": "submitted",
                 "generated_patch": "diff" if target else "",
@@ -67,12 +81,13 @@ def _nebius_rows() -> list[dict[str, Any]]:
         "tool_call_id": "",
         "tool_calls": [TOOL_CALL],
     }
+    bad = {**msg, "tool_calls": [{**TOOL_CALL, "function": {"arguments": "", "name": "finish"}}]}
     return [
         {
             "trajectory_id": f"t{i}",
             "instance_id": "o__p-1",
             "repo": "o/p",
-            "trajectory": [msg],
+            "trajectory": [msg, bad],
             "model_patch": "diff",
             "exit_status": "submit",
             "resolved": i % 2,

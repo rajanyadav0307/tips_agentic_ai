@@ -15,7 +15,7 @@ dependencies = [
     "pyyaml>=6.0",
     "scipy>=1.13",
     "statsmodels>=0.14",
-    "matplotlib>=3.9",
+    "matplotlib>=3.10",
     "huggingface-hub>=0.25",
 ]
 
@@ -79,7 +79,8 @@ extend-exclude = ["analysis/exploratory", "data", "outputs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "N", "SIM", "D"]
-ignore = ["D105", "D107"]
+# E501: the formatter wraps code; long SQL and report strings are kept readable.
+ignore = ["D105", "D107", "E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

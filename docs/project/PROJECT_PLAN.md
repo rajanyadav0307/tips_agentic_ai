@@ -55,8 +55,8 @@
 | Setup (Phase 0) | ✅ Done | Package, uv lockfile for 4 platforms, ruff/mypy/pytest, MkDocs, CI passing on all 4 platforms, MIT license, CITATION.cff |
 | 1 Problem | ✅ Done (Phase A) | Hypotheses and analysis plan frozen in `docs/01_problem_and_hypotheses.md` (tag `analysis-plan-v1`) |
 | 2 Data | ✅ Done (Phase A) | 121 pinned, checksummed files (24.35 GB); `agent-tips download`; loaders; inventory in `docs/02_data_inventory.md` |
-| 3 Clean | ⚠️ Exploratory only | Filters live inside the scripts in `analysis/exploratory/` |
-| 4 EDA | ❌ Missing | — |
+| 3 Clean | ✅ Done (Phase B) | `agent-tips clean`: 402,043 tries and 26.5M steps in one shared format; funnels match the exploration exactly; `docs/03_cleaning_report.md` |
+| 4 EDA | ✅ Done (Phase B) | `agent-tips eda`: 7 charts plus `docs/04_eda_report.md` |
 | 5 Features | ⚠️ Exploratory only | Separate regex labelers per script; labels not validated |
 | 6 Model | ⚠️ Exploratory only | Same-bug comparisons, bootstrap and permutation exist; no regression models or FDR |
 | 7 Evaluate | ⚠️ Partial | Robustness checks exist for the older AI only |
@@ -201,7 +201,10 @@ The label-validation sample (C2) is saved as an easy-to-read spreadsheet, so the
 - **Depends on:** B2–B4.
 - **Effort:** 4 h.
 
-**Checkpoint B:** cleaning report and EDA report; plain-words summary to the owner.
+**Checkpoint B:** cleaning report and EDA report; plain-words summary to the owner. ✅ **Completed 2026-10-20**; awaiting the owner's review. Changes made during the phase:
+- the cleaning code lives in `cleaning/sources.py` (SQL per dataset), `pipeline.py` and `report.py`;
+- the tip-compliance chart moved to Step 5, because it needs labels;
+- EDA PNGs are kept in `docs/figures/eda/`.
 
 ---
 

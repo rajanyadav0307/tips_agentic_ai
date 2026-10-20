@@ -7,6 +7,8 @@ nav:
   - Step reports:
       - 1. Problem and hypotheses: 01_problem_and_hypotheses.md
       - 2. Data inventory: 02_data_inventory.md
+      - 3. Cleaning report: 03_cleaning_report.md
+      - 4. Exploration (EDA): 04_eda_report.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md

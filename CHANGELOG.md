@@ -4,6 +4,11 @@
 
 ### Added
 
+- Phase B:
+  - `agent-tips clean` (shared `tries`/`steps` tables, flags, version batches, funnel, generated `docs/03_cleaning_report.md`);
+  - `agent-tips eda` (7 charts, `docs/04_eda_report.md`);
+  - CI actions upgraded (checkout v7, setup-uv v10).
+
 - Phase A:
   - frozen hypotheses and analysis plan (`docs/01_problem_and_hypotheses.md`, tag `analysis-plan-v1`);
   - `agent-tips download` with pinned revisions and SHA-256 verification;
