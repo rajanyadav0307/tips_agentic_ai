@@ -1,9 +1,15 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0] - 2026-10-20
 
 ### Added
 
+- Phase E:
+  - `agent-tips figures`: paper figures F1–F8 (PDF and PNG), tables T1–T4 (LaTeX and Markdown, `docs/08_tables.md`) and `numbers.tex`, so every number in the paper comes from the results files;
+  - `agent-tips run-all`: Steps 2–8 in order;
+  - paper draft in `paper/` (ACM format), compiled to `paper/main.pdf`;
+  - related-work refresh (2026-10-20) in `docs/project/DS_PROJECT_PROPOSAL.md`;
+  - end-to-end test of Steps 3–8 on a larger fake project; test coverage 96%.
 - Phase D:
   - `agent-tips model`: fair (within-group) estimator with issue-cluster bootstrap and permutation test, fixed-effects regression with clustered errors, interactions, survival analysis, exact-history fork pairs, simple-vs-fair gaps, design checks, Benjamini–Hochberg; generated `docs/06_results.md`;
   - `agent-tips evaluate`: robustness checks (batch definitions, undated tries, leave one AI out, label errors, NVIDIA's removed tries, conditional logistic regression) and a two-run reproducibility check; generated `docs/07_evaluation.md`.
@@ -37,6 +43,9 @@
 
 ### Fixed
 
+- Bootstrap p-values can no longer be exactly 0 (they use (count + 1) / (reps + 1)).
+- P3 counts "opposite sign" only when both estimates are non-zero; it is also reported without underpowered pairs.
+- Reports create the `docs/` folder if it is missing.
 - Analysis rows now load in a fixed order, so random draws (and results) are identical across runs.
 - File names inside `/testbed` no longer count as test scripts. The exploratory code had this bug.
 - Test-tool names inside paths no longer count as test-suite runs.

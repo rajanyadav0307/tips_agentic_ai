@@ -203,6 +203,16 @@ def build(cfg: Config, out: Path | None = None) -> Path:
     )
     add(f"- **Sign differs:** {p3['share_sign_differs']:.0%} of pairs.")
     add(f"- **Significance differs:** {p3['share_significance_differs']:.0%} of pairs.")
+    ex = p3.get("excluding_underpowered")
+    if ex:
+        add(
+            f"- **Without the {p3['pairs'] - ex['pairs']} underpowered pairs** (fewer than 100 "
+            f"groups, which the plan says not to interpret): mean gap "
+            f"{ex['mean_abs_gap'] * 100:.1f} points [{ex['ci'][0] * 100:.1f}, "
+            f"{ex['ci'][1] * 100:.1f}] over {ex['pairs']} pairs; sign differs in "
+            f"{ex['share_sign_differs']:.0%}, significance in {ex['share_significance_differs']:.0%}."
+        )
+    add("- An estimate of exactly 0 has no direction, so it never counts as an opposite sign.")
     simp = s["simpson"]
     add(
         f"- **Simpson's paradox:** pooled across the newer AIs, the simple estimate for test first is "
@@ -296,5 +306,6 @@ def build(cfg: Config, out: Path | None = None) -> Path:
         "reproduction script after the first code edit), not from file names in the editor."
     )
     path = out or cfg.root / "docs" / "06_results.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path

@@ -627,21 +627,31 @@ def run(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
                 "simple": simple,
                 "fair": fair,
                 "gap": simple - fair,
-                "sign_differs": bool(np.sign(simple) != np.sign(fair)),
+                # opposite signs only; an estimate of exactly 0 has no direction
+                "sign_differs": bool(simple * fair < 0),
                 "significance_differs": bool(sig_s != sig_f),
             }
         )
         gap_draws_all.append(np.abs(sd - fd))
     gap_df = pd.DataFrame(gaps)
-    mean_abs = np.nanmean(np.vstack(gap_draws_all), axis=0)
-    p3 = {
-        "pairs": int(len(gap_df)),
-        "mean_abs_gap": float(gap_df.gap.abs().mean()),
-        "ci": [float(x) for x in np.nanpercentile(mean_abs, [2.5, 97.5])],
-        "share_sign_differs": float(gap_df.sign_differs.mean()),
-        "share_significance_differs": float(gap_df.significance_differs.mean()),
-        "supported": bool(np.nanpercentile(mean_abs, 2.5) > margin),
-    }
+    strata = res[res.design == "fair"][["hid", "label", "ai", "n_strata"]]
+    gap_df = gap_df.merge(strata, on=["hid", "label", "ai"], how="left")
+    gap_df["underpowered"] = gap_df["n_strata"].fillna(0) < 100
+    all_draws = np.vstack(gap_draws_all)
+
+    def _p3(keep: np.ndarray) -> dict[str, Any]:
+        g, m = gap_df[keep], np.nanmean(all_draws[keep], axis=0)
+        return {
+            "pairs": int(len(g)),
+            "mean_abs_gap": float(g.gap.abs().mean()),
+            "ci": [float(x) for x in np.nanpercentile(m, [2.5, 97.5])],
+            "share_sign_differs": float(g.sign_differs.mean()),
+            "share_significance_differs": float(g.significance_differs.mean()),
+            "supported": bool(np.nanpercentile(m, 2.5) > margin),
+        }
+
+    p3 = _p3(np.ones(len(gap_df), bool))  # frozen definition: every pair
+    p3["excluding_underpowered"] = _p3(~gap_df["underpowered"].to_numpy())
     simpson = {
         "pooled_simple_nvidia": next(
             r["estimate"] for r in rows if r["hid"] == "P2" and r["design"] == "simple"

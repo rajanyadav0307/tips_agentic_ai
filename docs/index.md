@@ -6,4 +6,12 @@ We test, with data, whether popular tips given to AI coding assistants actually 
 - **Results so far:** [Proposal and results](project/DS_PROJECT_PROPOSAL.md)
 - **Code reference:** [API reference](reference.md)
 
-Steps 4 to 7 of the plan add one report each to this site: exploration, features, results and evaluation.
+Step reports 01–08 are in the navigation. The paper draft is `paper/main.pdf` in the repository.
+
+## Main findings
+
+- **Reproducing the bug first hurt an older AI**: 3.5 fewer bugs fixed per 100 tries, in a fair coin-flip comparison.
+- **For four newer AIs (seven setups), testing first made no meaningful difference.**
+- **Simple analyses mislead**: they differ from fair ones by about 11 points on average, often in the opposite direction.
+
+![Simple vs fair estimates](figures/paper/f5_gaps.png)

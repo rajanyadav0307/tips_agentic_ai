@@ -12,6 +12,7 @@ nav:
       - 5. Features and label validation: 05_feature_report.md
       - 6. Results: 06_results.md
       - 7. Evaluation (robustness): 07_evaluation.md
+      - 8. Paper figures and tables: 08_tables.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md

@@ -4,8 +4,19 @@ We test, with data, whether popular tips given to AI coding assistants (for exam
 
 The method: the same AI tried each bug many times. Comparing tries **of the same bug** is fair, and at the very first step the AI's choice is decided purely by sampling chance, like a coin toss.
 
-- Project plan (locked 8-step procedure and engineering standards): [`docs/project/PROJECT_PLAN.md`](docs/project/PROJECT_PLAN.md)
-- Proposal and results so far: [`docs/project/DS_PROJECT_PROPOSAL.md`](docs/project/DS_PROJECT_PROPOSAL.md)
+## Results
+
+| Question | Answer (fair, same-bug comparison) |
+| --- | --- |
+| Does reproducing the bug first help an older AI (Llama-70B, SWE-agent)? | **No, it hurt:** −3.5 bugs fixed per 100 tries (95% CI −4.8 to −2.2) |
+| Does testing first help four newer AIs (seven setups)? | **No meaningful difference:** +0.1 (90% CI −0.4 to +0.5, inside the ±2 margin set in advance) |
+| Do simple analyses of the same logs agree? | **No:** they differ by 10.9 points on average and point the other way in 37% of tip × AI pairs |
+
+- **Paper draft:** [`paper/main.pdf`](paper/main.pdf)
+- **Step reports** (results, robustness, tables): [`docs/`](docs/), also on the [documentation site](https://rajanyadav0307.github.io/tips_agentic_ai/)
+- **Plan** (locked 8-step procedure and engineering standards): [`docs/project/PROJECT_PLAN.md`](docs/project/PROJECT_PLAN.md)
+
+Every number in the paper is generated into [`outputs/tables/numbers.tex`](outputs/tables/numbers.tex) by `agent-tips figures`; nothing is typed by hand.
 
 ## Install
 
@@ -39,7 +50,15 @@ Each step of the locked procedure is a command:
 | `agent-tips figures` | 8: communicate |
 | `agent-tips run-all` | everything, in order |
 
-Steps are added phase by phase (see the plan). Until a step is built, its command exits with code 2. The exploratory scripts that produced the first results are kept, unchanged, in [`analysis/exploratory/`](analysis/exploratory/).
+To reproduce everything from scratch (about 25 GB of downloads):
+
+```bash
+uv sync
+uv run agent-tips run-all          # add --no-repro to skip the two-run reproducibility check
+cd paper && latexmk -pdf main.tex  # optional: rebuild the paper (needs a LaTeX install with acmart)
+```
+
+The exploratory scripts that produced the first results are kept, unchanged, in [`analysis/exploratory/`](analysis/exploratory/).
 
 ## Develop
 

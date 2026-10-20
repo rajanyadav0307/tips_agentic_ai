@@ -160,5 +160,6 @@ Commands are truncated to 500 characters and observations to their first 300 cha
 {markdown_dictionary(STEPS)}
 """
     path = out or cfg.root / "docs" / "03_cleaning_report.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path

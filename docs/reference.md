@@ -42,6 +42,10 @@
 
 ::: agent_tips.evaluation.report
 
+::: agent_tips.viz.figures
+
+::: agent_tips.viz.tables
+
 ::: agent_tips.utils.device
 
 ::: agent_tips.utils.seed

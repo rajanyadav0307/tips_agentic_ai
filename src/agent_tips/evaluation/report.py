@@ -197,5 +197,6 @@ def build(cfg: Config, out: Path | None = None) -> Path:
         add("Not run (`--no-repro`).")
     add("")
     path = out or cfg.root / "docs" / "07_evaluation.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
     return path

@@ -57,3 +57,38 @@ def test_analysis_runs_on_fixtures(featured: Config) -> None:
         summary = analysis.run(featured, log=lambda _: None)
     assert (featured.path("results") / "estimates.parquet").is_file()
     assert set(summary["decisions"]) == {"P1", "P2", "P3"}
+
+
+def test_full_chain_on_big_fixture(big_project: Config) -> None:
+    """Steps 3-8 end to end on a larger fake project: every output is written."""
+    import warnings
+
+    from agent_tips.eda import charts
+    from agent_tips.evaluation import report as eval_report
+    from agent_tips.evaluation import robustness
+    from agent_tips.models import analysis
+    from agent_tips.models import report as model_report
+    from agent_tips.viz import figures, tables
+
+    cfg = big_project
+
+    def quiet(_: str) -> None:
+        pass
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        clean(cfg, log=quiet)
+        charts.run(cfg, log=quiet)
+        build(cfg, log=quiet)
+        summary = analysis.run(cfg, log=quiet)
+        model_report.build(cfg, out=cfg.root / "06.md")
+        robustness.run(cfg, log=quiet, repro=False)
+        eval_report.build(cfg, out=cfg.root / "07.md")
+        figures.run(cfg, log=quiet)
+        tables.run(cfg, log=quiet)
+    assert set(summary["decisions"]) == {"P1", "P2", "P3"}
+    assert (cfg.root / "06.md").read_text(encoding="utf-8").startswith("# Step 6")
+    assert (cfg.root / "07.md").read_text(encoding="utf-8").startswith("# Step 7")
+    assert len(list((cfg.path("figures") / "paper").glob("*.pdf"))) == 8
+    numbers = (cfg.root / "outputs" / "tables" / "numbers.tex").read_text(encoding="utf-8")
+    assert r"\newcommand{\POneEst}" in numbers

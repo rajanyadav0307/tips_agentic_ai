@@ -23,6 +23,20 @@ Thumbs.db
 
 # Data: raw downloads and large outputs stay out of git (rebuilt with `agent-tips`)
 data/**
-outputs/
+outputs/*
+# ...except the small generated paper inputs, so the paper compiles from a fresh clone
+!outputs/tables/
+!outputs/figures/
+outputs/figures/*
+!outputs/figures/paper/
 analysis/exploratory/data/
 *.parquet
+
+# LaTeX build files (the compiled paper/main.pdf is kept)
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out

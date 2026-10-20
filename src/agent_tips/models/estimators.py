@@ -185,9 +185,9 @@ def fair_estimate(
     lo, hi, lo90, hi90 = np.nanpercentile(boot, [2.5, 97.5, 5, 95]) if len(st) else [np.nan] * 4
     if perm_reps:
         p = permutation_p(df, strata_cols, arm_col, a, b, y, perm_reps, rng, issue_col)
-    else:  # two-sided bootstrap p-value: how often the resampled sign flips
+    else:  # two-sided bootstrap p-value: how often the resampled sign flips (never 0)
         p = (
-            float(min(1.0, 2 * min(np.mean(boot <= 0), np.mean(boot >= 0))))
+            float(min(1.0, 2 * (min(np.sum(boot <= 0), np.sum(boot >= 0)) + 1) / (len(boot) + 1)))
             if len(st)
             else float("nan")
         )

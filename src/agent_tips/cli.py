@@ -1,7 +1,7 @@
 """Command-line interface: ``agent-tips <step>``.
 
-Each subcommand runs one step of the locked data science procedure.
-Steps that are not built yet exit with code 2 and say which phase adds them.
+Each subcommand runs one step of the locked data science procedure;
+``run-all`` runs them all in order.
 """
 
 from __future__ import annotations
@@ -14,12 +14,6 @@ from collections.abc import Sequence
 from agent_tips import __version__
 from agent_tips.config import load_config
 from agent_tips.utils.device import select_device, torch_available
-
-# Steps not built yet: subcommand -> (procedure step, plan phase that implements it)
-PENDING: dict[str, tuple[str, str]] = {
-    "figures": ("Step 8: communicate", "E"),
-    "run-all": ("Steps 2-8 in order", "E"),
-}
 
 
 def _env() -> int:
@@ -84,6 +78,34 @@ def _evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _figures(_: argparse.Namespace) -> int:
+    from agent_tips.viz import figures, tables
+
+    cfg = load_config()
+    figures.run(cfg)
+    tables.run(cfg)
+    return 0
+
+
+def _run_all(args: argparse.Namespace) -> int:
+    """Run Steps 2-8 in order; stops at the first step that fails."""
+    steps = [
+        ("download", _download),
+        ("clean", _clean),
+        ("eda", _eda),
+        ("features", _features),
+        ("model", _model),
+        ("evaluate", _evaluate),
+        ("figures", _figures),
+    ]
+    for name, fn in steps:
+        print(f"== {name}")
+        code = fn(args)
+        if code:
+            return code
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(prog="agent-tips", description=__doc__)
@@ -102,8 +124,10 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument(
         "--no-repro", action="store_true", help="skip the two-run reproducibility check"
     )
-    for name, (step, _) in PENDING.items():
-        sub.add_parser(name, help=step)
+    sub.add_parser("figures", help="Step 8: paper figures, tables and number macros")
+    ra = sub.add_parser("run-all", help="Steps 2-8 in order (download through figures)")
+    ra.add_argument("--no-repro", action="store_true", help="skip the reproducibility check")
+    ra.set_defaults(only=None, verify=False, dry_run=False)
     return parser
 
 
@@ -124,9 +148,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _model(args)
     if args.command == "evaluate":
         return _evaluate(args)
-    step, phase = PENDING[args.command]
-    print(f"'{args.command}' ({step}) is not implemented yet; it is added in phase {phase}.")
-    return 2
+    if args.command == "figures":
+        return _figures(args)
+    if args.command == "run-all":
+        return _run_all(args)
+    raise AssertionError(f"unhandled command {args.command}")  # argparse prevents this
 
 
 if __name__ == "__main__":

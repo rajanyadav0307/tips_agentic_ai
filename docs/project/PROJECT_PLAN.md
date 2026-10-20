@@ -60,7 +60,7 @@
 | 5 Features | ✅ Done (Phase C) | Shared labeler (151 tests); observation check; blind second labeling in 2 rounds (κ 0.90, then 0.86 on a fresh sample); issue and localization features; `docs/05_feature_report.md` |
 | 6 Model | ✅ Done (Phase D) | `agent-tips model`: 95 result rows (P1 −3.5 pts harm; P2 +0.1, equivalent within ±2; P3 mean gap 10.9 pts); FE regression, survival, forks, BH; `docs/06_results.md` |
 | 7 Evaluate | ✅ Done (Phase D) | `agent-tips evaluate`: batch definitions, undated tries, leave one AI out, label errors, NVIDIA tipping point with calibration, conditional logit; two runs identical; `docs/07_evaluation.md` |
-| 8 Communicate | ❌ Missing | — |
+| 8 Communicate | ✅ Done (Phase E) | `agent-tips figures` (F1–F8, T1–T4, `numbers.tex`), `agent-tips run-all`, paper draft `paper/main.pdf`, related work refreshed 2026-10-20, release v1.0.0 |
 
 ## 3. Decisions (defaults chosen by the assistant)
 
@@ -425,7 +425,11 @@ All figures use a colorblind-safe palette and are saved as vector PDF plus PNG.
 - **Depends on:** E4.
 - **Effort:** 2 h.
 
-**Checkpoint E:** the paper draft and the release; plain-words summary to the owner.
+**Checkpoint E:** the paper draft and the release; plain-words summary to the owner. ✅ **Completed 2026-10-20**; awaiting the owner's review. Changes made during the phase:
+
+- Two fixes found while drawing the figures: bootstrap p-values are floored at 1/(reps + 1), and P3 no longer counts an estimate of exactly 0 as an "opposite sign" (42% → 37%); P3 is also reported without the underpowered pairs (9.7 points, 38%).
+- An end-to-end test on a larger fake project runs Steps 3–8; coverage rose to 96%.
+- The generated tables and paper figures are kept in git (`outputs/tables/`, `outputs/figures/paper/`) so the paper compiles from a fresh copy.
 
 ## 5. Dependency overview
 
@@ -505,10 +509,10 @@ paper/           LaTeX source of the paper
 
 ## 9. Definition of done (whole project)
 
-- [ ] Every hypothesis in `docs/01_problem_and_hypotheses.md` has a final result in `estimates.parquet`.
-- [ ] Every number, figure and table in the paper is produced by `agent-tips run-all` from pinned data.
-- [ ] Label validation is reported (κ and precision), and its effect is covered by the sensitivity analysis.
-- [ ] CI passes on all 4 platforms. Test coverage is at least 85% for `src/`.
+- [x] Every hypothesis in `docs/01_problem_and_hypotheses.md` has a final result in `estimates.parquet`.
+- [x] Every number, figure and table in the paper is produced by `agent-tips run-all` from pinned data.
+- [x] Label validation is reported (κ and precision), and its effect is covered by the sensitivity analysis.
+- [x] CI passes on all 4 platforms. Test coverage is at least 85% for `src/` (96%).
 - [ ] Reports 01–07 are in `docs/`, the docs site is deployed, and the README rerun instructions are verified on a fresh copy.
-- [ ] Paper draft in `paper/` compiles, and threats to validity include the AI-assisted validation and NVIDIA's filtering.
+- [x] Paper draft in `paper/` compiles, and threats to validity include the AI-assisted validation and NVIDIA's filtering.
 - [ ] Release `v1.0.0` is tagged on GitHub.

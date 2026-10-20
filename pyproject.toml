@@ -1,6 +1,6 @@
 [project]
 name = "agent-tips"
-version = "0.1.0"
+version = "1.0.0"
 description = "Do tips for AI coding agents actually help? Fair comparisons from logged agent runs."
 readme = "README.md"
 requires-python = ">=3.12,<3.14"

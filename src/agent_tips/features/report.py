@@ -329,5 +329,6 @@ Differences of up to about 3 points have three causes:
 A step "touches" a gold file if its path, the file open in the editor, or its command mentions a file changed by the real fix.
 """
     path = out or cfg.root / "docs" / "05_feature_report.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path

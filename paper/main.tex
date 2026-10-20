@@ -1,0 +1,265 @@
+\documentclass[sigconf,review=false,anonymous=false]{acmart}
+\settopmatter{printacmref=false}
+\setcopyright{none}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\acmConference[Draft]{Preprint}{2026}{}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+\graphicspath{{../outputs/figures/paper/}}
+
+% Every number quoted below comes from this generated file (agent-tips figures).
+\input{../outputs/tables/numbers.tex}
+
+\begin{document}
+
+\title{Does ``Reproduce the Bug First'' Help Coding Agents?}
+\subtitle{Natural Experiments in \TriesAnalysed{} Agent Trajectories}
+
+\author{Rajan Yadav}
+\affiliation{\institution{Independent researcher}\country{}}
+\email{rajanyadav0307@gmail.com}
+
+\begin{abstract}
+Advice for AI coding agents often says to reproduce a bug with a test script before fixing it, and to re-run the script afterwards. Studies that compare successful and failed agent runs tend to support such advice, but these comparisons mix easy and hard issues and can mislead. We use public trajectory datasets in which the same agent attempted the same issue many times. Because the input is identical across attempts, differences in what the agent does first arise from sampling randomness, which yields natural experiments. Comparing attempts only within the same issue, we find that reproducing first \emph{lowered} the success of an older Llama-70B SWE-agent by \POneAbs{} points per 100 attempts (95\% CI \POneLo{} to \POneHi{}; \POneIssues{} issues). The mechanism is visible in the traces: reproducing first used up context and delayed reaching the file that needed the fix (median step \KMMedianR{} vs.\ \KMMedianS{}). For \NumNewerModels{} newer models in \NumNewerConfigs{} configurations, testing first made no meaningful difference (\PTwoEst{} points; 90\% CI \PTwoLoNinety{} to \PTwoHiNinety{}, inside a pre-registered $\pm$\Margin{}-point margin). Simple pooled comparisons of the same data are badly misleading: across \PThreePairs{} tip--AI pairs they differ from the within-issue estimates by \PThreeGap{} points on average, and per-AI simple estimates of up to \PerAISimpleMax{} points shrink to \PerAIFairMin{} to \PerAIFairMax{}. Re-running one's own test after a fix (``check your fix'') is associated with modest gains for two of eight AI configurations. We release the full pipeline, which reproduces every number in this paper.
+\end{abstract}
+
+\ccsdesc[500]{Software and its engineering~Software testing and debugging}
+\ccsdesc[300]{Computing methodologies~Artificial intelligence}
+\ccsdesc[300]{Mathematics of computing~Probability and statistics}
+
+\keywords{coding agents, SWE-bench, trajectories, natural experiments, confounding, Simpson's paradox}
+
+\maketitle
+
+% ---------------------------------------------------------------------------
+\section{Introduction}
+
+Software-engineering agents such as SWE-agent~\cite{yang2024sweagent} and OpenHands~\cite{wang2025openhands} resolve repository issues by running a loop of tool calls. A large body of practical advice tells these agents how to work: reproduce the bug first, run the tests, check the fix, clean up. Agent designs bake the advice in~\cite{chen2024coder}, and analyses of trajectories report that runs which reproduce or validate are more often successful~\cite{zan2025multiswebench,mehtiyev2026beyond}.
+
+Whether such advice \emph{causes} success is a different question. Issues differ greatly in difficulty, and agents behave differently on easy and hard issues. If an agent writes a reproduction script mostly on issues that are easy to reproduce, and those issues are also easy to fix, a pooled comparison will credit the script for the issue's easiness (Figure~\ref{fig:method}). This is the classic problem of confounding and of Simpson's paradox~\cite{simpson1951}. Recent work shows that pooling across tasks inflates behavior--outcome associations in agent trajectories and that some published effects vanish or reverse once the task is held fixed~\cite{khanna2026sametask}.
+
+We exploit a feature of public trajectory datasets: the same agent, with the same prompt and the same issue text, was run many times on each issue. With nothing in the input to tell attempts apart, the agent's choice of first action varies only through sampling. For the older SWE-agent model, about \OlderShareR{} of attempts begin by creating a script and the rest begin by searching the code, often on the very same issue on the same day. Comparing these two groups \emph{within} each issue is a natural experiment.
+
+Our contributions are:
+\begin{itemize}
+  \item \textbf{A natural-experiment design for agent logs.} We compare repeated attempts within an issue, control for a hidden mixture of model versions using the evaluation day, and check the design with balance tests, a placebo, and exact-history ``forks''.
+  \item \textbf{Reproducing first hurt an older agent and did not help newer ones.} The older model lost \POneAbs{} points. For \NumNewerModels{} newer models in \NumNewerConfigs{} configurations the effect is equivalent to zero within $\pm$\Margin{} points, in every leave-one-AI-out analysis.
+  \item \textbf{The mechanism.} Reproducing first cost the older model about \CostStepsOlder{} extra steps, made it run out of context \CtxExit{} points more often, and delayed localization of the gold file.
+  \item \textbf{The size of the simple-analysis trap.} Across \PThreePairs{} tip--AI pairs, pooled and within-issue estimates differ by \PThreeGap{} points on average and point in opposite directions in \PThreeSign{} of pairs.
+\end{itemize}
+The hypotheses, estimators and decision rules were frozen before any confirmatory run.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{f1_method.pdf}
+  \Description{Toy example with an easy and a hard issue; pooling gives +17 points, within-issue comparison gives 0.}
+  \caption{Why pooled comparisons mislead. Within each issue the tip changes nothing, but it is used more on the easy issue, so pooling all attempts makes it look helpful. Our estimator compares attempts within an issue and then averages.}
+  \label{fig:method}
+\end{figure*}
+
+% ---------------------------------------------------------------------------
+\section{Related Work}
+
+\paragraph{Trajectory analyses.} Many studies relate agent behavior to success: action patterns and behavioral profiles~\cite{gao2026interpret}, behavioral drivers across agents~\cite{mehtiyev2026beyond}, and the role of reproduction tests in repair~\cite{ceka2025traceability}. These are observational and compare runs across tasks. Khanna~\cite{khanna2026sametask} shows that such pooled comparisons are inflated by between-task structure and recommends within-task comparisons and permutation calibration. We adopt that recommendation, add a version control and coin-flip framing, and measure named tips across eight AI configurations.
+
+\paragraph{Identification from sampling noise.} He et al.~\cite{he2026process} note that, given a history, the next action is randomized by decoding noise, and they estimate step effects by \emph{replaying} continuations from prefixes. We use the same logic without replay, relying on attempts that already exist in public logs; at our scale, population-level effects are well powered. Sam-Bodden~\cite{sambodden2026context} reports that even temperature-0 inference flips about 9\% of per-instance outcomes, which supports the premise that repeated attempts differ by chance.
+
+\paragraph{Interventions on instructions.} Prompt studies find that repository context files push agents toward more exploration and testing without higher success~\cite{gloaguen2026agentsmd}, and that an instruction only to reproduce before patching does not help and can hurt~\cite{gloaguen2026act}. Our results agree, using natural variation on real issues rather than modified tasks.
+
+% ---------------------------------------------------------------------------
+\section{Data}
+
+We use three public datasets (Table~\ref{tab:data} lists their Hugging Face IDs), each pinned to a Hugging Face revision with SHA-256 checksums.
+
+\begin{itemize}
+  \item \textbf{Older AI}~\cite{nebius2024trajectories}: SWE-agent runs of the \path{swe-agent-llama-70b} model on SWE-bench-style issues~\cite{jimenez2024swebench}, with a median of \OlderTriesPerIssue{} attempts per issue, with evaluation timestamps.
+  \item \textbf{Nebius newer AI}~\cite{nebius2025openhands}: OpenHands runs of Qwen3-Coder on SWE-rebench issues~\cite{badertdinov2025swerebench}. It keeps every attempt, including failures.
+  \item \textbf{NVIDIA newer AIs}~\cite{ahmad2026openswetraces}: Open-SWE-Traces. We use the \NumNewerConfigs{} subsets (\NumNewerModels{} models across SWE-agent and OpenHands, two task sources) that have repeated attempts per issue and a shared editing tool.
+\end{itemize}
+
+\paragraph{Cleaning.} We converted all \TriesTotal{} attempts and \StepsTotal{}M steps into one schema (Table~\ref{tab:funnel}). We kept attempts whose issue text matches the most common text for that issue (so inputs are identical), dropped NVIDIA attempts with unknown outcome, and, for the older AI, kept attempts restricted to the target model. NVIDIA had already removed attempts that hit the step limit or produced no patch~\cite{ahmad2026openswetraces}; Section~\ref{sec:threats} discusses this.
+
+\paragraph{Hidden model versions.} The older dataset's single model label covers several versions: success rates by evaluation day range from \VersionRateMin{} to \VersionRateMax{}, and the share of attempts that start by writing a script moves with them (Figure~\ref{fig:versions}). We therefore compare attempts within issue \emph{and} evaluation day.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{f2_versions.pdf}
+  \Description{Scatter of evaluation days: share of attempts starting with a script versus success rate.}
+  \caption{Older AI by evaluation day: success and the share of attempts that start by writing a script move together, revealing a mixture of model versions.}
+  \label{fig:versions}
+\end{figure}
+
+\paragraph{Labels.} A shared rule-based labeler maps every action to one of twelve kinds (e.g.\ create reproduction script, edit code, run, run test suite, look). We validated it in two ways. First, we checked each label against the tool's reply (e.g.\ a ``create'' was confirmed by the file-created message). Second, a blind second labeling of stratified samples agreed with the rules with Cohen's $\kappa$~\cite{cohen1960} of \KappaOne{} ($n=\LabelNOne$) and, on a fresh sample, \KappaTwo{} ($n=\LabelNTwo$). The reproduction-script label has precision \ReproPrecision{} and recall \ReproRecall{}; we test the effect of missed scripts in Section~\ref{sec:robust}.
+
+\begin{table*}[t]
+  \caption{Datasets as analysed (attempts with identical input and known outcome).}
+  \label{tab:data}
+  \footnotesize
+  \resizebox{\textwidth}{!}{\input{../outputs/tables/t1_datasets.tex}}
+\end{table*}
+
+% ---------------------------------------------------------------------------
+\section{Fair-Comparison Method}
+
+\paragraph{Estimator.} For a binary choice $a$ vs.\ $b$ (e.g.\ reproduce first vs.\ search first) we form strata: issue $\times$ day for the older AI, and AI configuration $\times$ issue for the newer AIs. In stratum $s$ with $n_{as}$ and $n_{bs}$ attempts and success rates $\hat p_{as}$, $\hat p_{bs}$, the estimate is the Mantel--Haenszel-weighted~\cite{mantel1959} average of within-stratum differences,
+\[
+  \hat\Delta = \frac{\sum_s w_s(\hat p_{as}-\hat p_{bs})}{\sum_s w_s},\qquad w_s=\frac{n_{as}n_{bs}}{n_{as}+n_{bs}},
+\]
+using only strata that contain both groups. We report 95\% (and 90\%) CIs from 2,000 bootstrap resamples of whole issues, and a permutation $p$-value from 1,000 shuffles of group labels within strata. As cross-checks we fit a linear probability model with stratum fixed effects and issue-clustered standard errors~\cite{cameron2015,angrist2009}, and a conditional logistic regression. The \emph{simple} estimate is the pooled difference in success rates with no strata.
+
+\paragraph{Hypotheses.} \textbf{P1}: for the older AI, the first action is \texttt{create} (group R) vs.\ a search or navigation command (group S). \textbf{P2}: for the newer AIs, the attempt creates a test or reproduction file before its first edit of project code (``test first'') vs.\ edits code first (``fix first''). ``No meaningful difference'' is claimed only if the 90\% CI lies within $\pm$\Margin{} points (two one-sided tests~\cite{schuirmann1987}). \textbf{P3}: the mean absolute gap between simple and fair estimates, over all tip--AI pairs, exceeds 2 points. Thirteen secondary analyses (\NumSecondary{} estimates) are corrected together with Benjamini--Hochberg~\cite{benjamini1995} at $q=0.05$. Comparisons with fewer than 100 informative strata are labelled underpowered and not interpreted.
+
+\paragraph{What is and is not a coin flip.} P1 is a decision at the first step, made on identical input, so within an issue and day it is as good as random (we test this below). P2 and the after-fix tips (S1--S6) are decisions made mid-run, after the agent has seen some output. For these, within-issue comparisons remove issue difficulty but not everything the agent observed, so we call them same-issue associations. For P2 we add a stricter check: pairs of attempts with \emph{identical} action histories up to the point where one creates a test file and the other does something else.
+
+\paragraph{Design checks.} (i) Within issue $\times$ day, the evaluation hour does not predict the first move (permutation $p=\HourBalanceP$, \HourBalanceGroups{} groups). (ii) A placebo comparing two names for the same action, \texttt{reproduce.py} vs.\ \texttt{reproduce\_bug.py}, gives \Placebo{} points (95\% CI \PlaceboLo{} to \PlaceboHi{}). (iii) We verify that each AI is ``undecided'' about the tip, choosing it in between 5\% and 95\% of attempts; test-first rates in the NVIDIA configurations range from \ComplianceMin{} to \ComplianceMax{}, while the Nebius Qwen3-Coder tests first in \NebiusCompliance{} of attempts and therefore offers no natural experiment for P2.
+
+% ---------------------------------------------------------------------------
+\section{Results}
+
+Table~\ref{tab:primary} summarises the primary results.
+
+\begin{table*}[t]
+  \caption{Primary estimates, in bugs fixed per 100 attempts (95\% CI). Groups / issues / attempts refer to the fair comparison.}
+  \label{tab:primary}
+  \footnotesize
+  \resizebox{\textwidth}{!}{\input{../outputs/tables/t3_primary.tex}}
+\end{table*}
+
+\subsection{Reproducing first hurt the older AI (P1)}
+
+Within issue and day, attempts that began by creating a script resolved \POneAbs{} fewer issues per 100 (95\% CI \POneLo{} to \POneHi{}; permutation $p\,\POneP$; \POneGroups{} groups, \POneIssues{} issues, \POneTries{} attempts). The fixed-effects regression gives \POneFE{} points and the conditional logit an odds ratio of \ORPOne{}. The effect is stable across five definitions of the version batch (\BatchMin{} to \BatchMax{}; Figure~\ref{fig:older}).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{f3_older.pdf}
+  \Description{Forest plot: all estimates of the reproduce-first effect for the older AI are between about -2.8 and -4 points with confidence intervals below zero.}
+  \caption{P1 under the main design, the alternative estimators, and alternative version-batch definitions. All 95\% CIs exclude zero.}
+  \label{fig:older}
+\end{figure}
+
+\subsection{Why: context and localization}
+
+Reproducing first was costly. Within the same issue and day, it added \CostStepsOlder{} steps per attempt and raised the share of attempts that ran out of context by \CtxExit{} points (Figure~\ref{fig:mechanism}a). It also delayed localization: the median step at which the agent first opened a file changed by the reference fix was \KMMedianR{} for reproduce-first attempts and \KMMedianS{} for search-first attempts (Kaplan--Meier~\cite{kaplan1958}; Figure~\ref{fig:mechanism}b). A discrete-time hazard model puts the per-step chance of reaching the gold file \Hazard{} points lower. An agent with a small context window pays for the script with the room it needs to find and fix the bug.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{f8_mechanism.pdf}
+  \Description{Left: bar chart of context exhaustion, higher for reproduce first. Right: survival curves showing reproduce-first attempts reach the gold file later.}
+  \caption{Mechanism for the older AI. (a) Share of attempts that ran out of context. (b) Time to first open a file changed by the reference fix; attempts that never open one are censored.}
+  \label{fig:mechanism}
+\end{figure*}
+
+\subsection{Testing first made no difference for newer AIs (P2)}
+
+Pooled over the \NumNewerConfigs{} newer configurations, testing first changed success by \PTwoEst{} points (95\% CI \PTwoLo{} to \PTwoHi{}; 90\% CI \PTwoLoNinety{} to \PTwoHiNinety{}; \PTwoIssues{} issues), which is equivalent to zero within $\pm$\Margin{} points. Per-configuration estimates range from \PerAIFairMin{} to \PerAIFairMax{} (Figure~\ref{fig:newer}). We found \ForkPairs{} pairs of attempts with identical action histories; in the \ForkN{} attempts where, at the fork, one creates a test file and the other does something else, creating the test file changed success by \ForkEst{} points (95\% CI \ForkLo{} to \ForkHi{}). The conditional logit odds ratio is \ORPTwo{}. For the Nebius Qwen3-Coder, which almost always tests first, the one available coin flip at the first step (\texttt{think} vs.\ \texttt{view}) also shows no effect (\STwelve{} points; 95\% CI \STwelveLo{} to \STwelveHi{}).
+
+Testing first is not free for newer AIs either: it costs \CostStepsNewer{} more steps, \CostReadNewer{}k more characters read and \CostWriteNewer{}k more written per attempt (Figure~\ref{fig:cost}). A plausible but untested explanation for the different outcome is that newer models have larger context windows, so the extra cost does not turn into failures.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{f4_newer.pdf}
+  \Description{Forest plot per AI: simple estimates range up to +27 points while fair estimates stay within about one point of zero.}
+  \caption{P2 per AI configuration and pooled. Simple pooled estimates (grey) suggest large benefits; within-issue estimates (blue) are all close to zero. Shaded: the pre-registered $\pm$\Margin{}-point equivalence margin.}
+  \label{fig:newer}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{f7_cost.pdf}
+  \Description{Bar chart of extra steps and characters per attempt when testing first.}
+  \caption{Extra cost per attempt of testing or reproducing first, within the same issue.}
+  \label{fig:cost}
+\end{figure}
+
+\subsection{Simple analyses mislead (P3)}
+
+For every tip--AI pair we computed both the simple pooled difference and the fair within-issue difference (Figure~\ref{fig:gaps}). The mean absolute gap is \PThreeGap{} points (95\% CI \PThreeLo{} to \PThreeHi{}) over \PThreePairs{} pairs; the two point in opposite directions in \PThreeSign{} of pairs and disagree on statistical significance in \PThreeSig{}. Leaving out the underpowered pairs gives \PThreeExGap{} points over \PThreeExPairs{} pairs. The P2 data also show Simpson's paradox: pooled across AIs, the simple estimate is \PTwoSimple{} points, while the per-AI simple estimates range from \PerAISimpleMin{} to \PerAISimpleMax{}, and the fair estimates from \PerAIFairMin{} to \PerAIFairMax{}. A study that compared successful and failed runs on this data would conclude that testing first adds up to \PerAISimpleMax{} points for some AIs; within the same issue, it adds nothing measurable.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{f5_gaps.pdf}
+  \Description{Scatter of simple versus fair estimates; most points lie far from the diagonal, many with opposite signs.}
+  \caption{Simple vs.\ fair estimates for every tip--AI pair. Points far from the diagonal are pairs where a pooled analysis misleads; red points flip sign. Shaded band: within 2 points.}
+  \label{fig:gaps}
+\end{figure}
+
+\subsection{Other tips}
+
+Of \NumSecondary{} secondary estimates, \NumSecondarySig{} remain significant after correction (Figure~\ref{fig:tips}; full list in Table~\ref{tab:secondary}). Re-running one's own test or reproduction script after the first fix (``check your fix'') is associated with \SOneOlder{} points for the older AI (95\% CI \SOneOlderLo{} to \SOneOlderHi{}) and \SOneTopNewer{} points for \SOneTopNewerAI{}; its CI includes zero for the other six configurations. Running the project's test suite, writing extra tests, and cleaning up show no consistent association. For the older AI, the choice among search commands as a first move makes little difference (\SThirteenMin{} to \SThirteenMax{} points vs.\ \texttt{search\_dir}). No interaction with issue type or programming language survived correction.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{f6_tips.pdf}
+  \Description{Six forest plots of other tips per AI; most intervals include zero.}
+  \caption{Other tips, fair within-issue estimates per AI configuration. These are same-issue associations, not coin flips.}
+  \label{fig:tips}
+\end{figure*}
+
+% ---------------------------------------------------------------------------
+\section{Robustness}
+\label{sec:robust}
+
+\paragraph{Version batches and undated attempts.} Some older-AI attempts lack an evaluation time; all of them failed. Adding them back to their issue in proportion to other failures gives \UndatedImputed{} points; the most adverse possible placement, one attempt at a time, gives \UndatedWorst{} points.
+
+\paragraph{Leave one AI out.} Dropping any one newer configuration keeps every 90\% CI for P2 within \LOOLo{} to \LOOHi{} points.
+
+\paragraph{Label errors.} A missed reproduction script can only move an attempt from ``fix first'' to ``test first'' if the attempt created some file before its first fix. Moving all such attempts gives \Broad{} points (95\% CI \BroadLo{} to \BroadHi{}).
+
+\paragraph{Reproducibility.} Running the full analysis twice from scratch yields \Reproducible{} result tables.
+
+% ---------------------------------------------------------------------------
+\section{Threats to Validity}
+\label{sec:threats}
+
+\paragraph{NVIDIA's filtering.} NVIDIA removed attempts that hit the step limit or produced no patch. These are hidden failures. If test-first attempts lost \TipPoint{} more of them than fix-first attempts, P2 would reach $-$\Margin{} points. We calibrated this with the unfiltered Nebius data: there, the share of attempts that such filtering would remove is \Calib{} points lower for test-first than fix-first attempts (95\% CI \CalibLo{} to \CalibHi{}; \CalibIssues{} issues), so the filter, if anything, works against testing first. The calibration comes from a different AI and few issues, so this remains the main limitation of P2.
+
+\paragraph{Mid-run decisions.} P2 and S1--S6 are not decided at the first step. Within-issue comparisons remove issue difficulty but not what the agent saw before deciding. The exact-fork analysis addresses this for P2; for S1--S6 we make no causal claim.
+
+\paragraph{Version proxy.} The evaluation day is a proxy for the older model's version. Finer batches (hours, bursts separated by 10- or 60-minute gaps) give the same answer.
+
+\paragraph{Labels and AI-assisted validation.} The second labeling used in the label validation was performed with the help of an AI assistant rather than a human annotator, blind to the rule labels. We disclose this and publish both labelings; the primary evidence for label quality is the check against tool replies, which is independent of any annotator.
+
+\paragraph{Generalization.} The older AI is a 2024 open model; the newer AIs are recent open models. Results may differ for proprietary agents, other scaffolds, or tasks without hidden tests.
+
+% ---------------------------------------------------------------------------
+\section{Discussion}
+
+For an older, context-limited agent, reproducing the bug first was harmful: the script used up space and time the agent needed to find the bug. For newer agents, testing first neither helped nor hurt, at a measurable cost in steps and text. ``Check your fix'' is the only tip with a positive association, and only for some AIs. A practical reading is that process advice should be evaluated per agent, and that its cost matters when context is scarce.
+
+The larger lesson is methodological. Pooled comparisons of successful and failed runs, the most common analysis of agent trajectories, were off by \PThreeGap{} points on average in our data, often in the wrong direction. Repeated attempts of the same issue are already common in public datasets; comparing within them is cheap and much more reliable.
+
+\section{Conclusion}
+
+Using natural experiments in repeated agent attempts, we found that the popular advice to reproduce a bug first hurt an older coding agent and made no difference for \NumNewerModels{} newer ones, while simple analyses of the same data suggest large benefits. We recommend within-issue comparisons as the default for analysing agent trajectories.
+
+\section{Data and Code Availability}
+
+All datasets are public on Hugging Face; the exact revisions and checksums are listed in the repository. The code (MIT license), including the cleaning, labeling, estimation, robustness, figure and table steps, is available at \url{https://github.com/rajanyadav0307/tips_agentic_ai}. The command \texttt{agent-tips run-all} reproduces every number, figure and table in this paper from the raw data. The analysis plan was frozen in the repository (tag \texttt{analysis-plan-v1}) before the confirmatory runs.
+
+\paragraph{Use of generative AI.} AI coding and writing assistants were used to implement the pipeline, perform the second labeling for label validation (Section~\ref{sec:threats}), and draft this manuscript. The author reviewed all code, results and text and takes responsibility for them.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+\appendix
+\section{Cleaning funnel}
+
+\begin{table*}[h]
+  \caption{Cleaning funnel per dataset.}
+  \label{tab:funnel}
+  \footnotesize
+  \input{../outputs/tables/t2_funnel.tex}
+\end{table*}
+
+\section{All secondary estimates}
+
+\begin{table*}[h]
+  \caption{All secondary estimates (fair, within-issue), with Benjamini--Hochberg $q$-values. Points per 100 attempts unless the outcome is a count.}
+  \label{tab:secondary}
+  \scriptsize
+  \resizebox{\textwidth}{!}{\input{../outputs/tables/t4_secondary.tex}}
+\end{table*}
+
+
+\end{document}

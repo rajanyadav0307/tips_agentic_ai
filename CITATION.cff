@@ -1,11 +1,12 @@
 cff-version: 1.2.0
 message: "If you use this software or its results, please cite it as below."
-title: "Do Tips for AI Coding Agents Help? Fair Comparisons from Logged Agent Runs"
+title: "Does \"Reproduce the Bug First\" Help Coding Agents? Natural Experiments in Agent Trajectories"
 authors:
   - family-names: Yadav
     given-names: Rajan
     email: rajanyadav0307@gmail.com
-version: 0.1.0
+version: 1.0.0
+date-released: "2026-10-20"
 license: MIT
 repository-code: "https://github.com/rajanyadav0307/tips_agentic_ai"
 keywords:

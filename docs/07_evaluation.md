@@ -79,4 +79,4 @@ The same comparisons as odds ratios, conditional on the group (below 1 means the
 
 ## Reproducibility
 
-The full analysis was run twice from scratch. Result-table hashes: `9067e0dabe5ccb39` and `9067e0dabe5ccb39` → identical.
+The full analysis was run twice from scratch. Result-table hashes: `18713af6488d5de6` and `18713af6488d5de6` → identical.

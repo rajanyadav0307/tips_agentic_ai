@@ -6,7 +6,7 @@
 
 - **Reproducing first hurt the older AI:** -3.5 bugs fixed per 100 tries (95% CI -4.8 to -2.2). This is a true coin-flip comparison.
 - **For the newer AIs, testing first made no meaningful difference:** +0.1 per 100 tries, and the 90% CI (-0.4 to +0.5) lies within the ±2-point margin set in advance.
-- **Simple analyses are badly misleading:** across 57 tip × AI comparisons, simple and fair estimates differ by 10.9 points on average (95% CI 10.3 to 11.9). In 42% of comparisons they point in opposite directions.
+- **Simple analyses are badly misleading:** across 57 tip × AI comparisons, simple and fair estimates differ by 10.9 points on average (95% CI 10.3 to 11.9). In 37% of comparisons they point in opposite directions.
 - **Secondary questions:** 11 of 73 secondary estimates stay significant after correcting for testing many things at once (Benjamini–Hochberg, q < 0.05). See the tables below.
 - **Why reproducing first hurt:** it uses up the older AI's memory and slows it down. These tries ran out of context more often, and reached the file the real fix changed later (median step 7 vs 2).
 - **Design checks:**
@@ -47,8 +47,10 @@ Total fork pairs (tries of the same issue with identical histories up to their f
 ## P3: the simple-analysis trap
 
 - **Mean absolute gap:** 10.9 points [10.3, 11.9].
-- **Sign differs:** 42% of pairs.
+- **Sign differs:** 37% of pairs.
 - **Significance differs:** 77% of pairs.
+- **Without the 7 underpowered pairs** (fewer than 100 groups, which the plan says not to interpret): mean gap 9.7 points [9.2, 10.3] over 50 pairs; sign differs in 38%, significance in 80%.
+- An estimate of exactly 0 has no direction, so it never counts as an opposite sign.
 - **Simpson's paradox:** pooled across the newer AIs, the simple estimate for test first is +1.9 points. Within each AI it ranges from -3.1 to +27.1.
 
 | Comparison | AI | Simple | Fair | Gap |
@@ -115,78 +117,78 @@ Total fork pairs (tries of the same issue with identical histories up to their f
 
 | ID | Comparison | AI | Fair estimate | p | q | Issues |
 | --- | --- | --- | --- | ---: | ---: | ---: |
-| S1 | Check your fix (re-ran own test script after fixing) | Older AI (Llama-70B, SWE-agent 2024) | +2.7 pts [+1.9, +3.6] | <0.001 | <0.001 | 2,346 |
-| S1 | Check your fix (re-ran own test script after fixing) | DeepSeek-V4-Flash (OpenHands, scale-swe) | -0.7 pts [-2.2, +0.8] | 0.402 | 0.796 | 1,011 |
-| S1 | Check your fix (re-ran own test script after fixing) | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +0.4 pts [-0.5, +1.4] | 0.389 | 0.796 | 2,710 |
-| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +4.1 pts [+2.4, +5.9] | <0.001 | <0.001 | 1,508 |
-| S1 | Check your fix (re-ran own test script after fixing) | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +0.4 pts [-0.6, +1.4] | 0.417 | 0.796 | 3,264 |
-| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | -1.2 pts [-3.0, +0.6] | 0.192 | 0.692 | 1,145 |
-| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.6-27B (SWE-agent, scale-swe) | +1.7 pts [-1.8, +5.3] | 0.350 | 0.796 | 231 |
-| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +0.1 pts [-1.5, +1.7] | 0.948 | 1.000 | 1,503 |
-| S10 | Submitted because the context ran out | Older AI (Llama-70B, SWE-agent 2024) | +11.0 pts [+9.2, +12.8] | <0.001 | <0.001 | 1,048 |
-| S10 | Any context-limit exit | Older AI (Llama-70B, SWE-agent 2024) | +11.0 pts [+9.1, +12.8] | <0.001 | <0.001 | 1,048 |
+| S1 | Check your fix (re-ran own test script after fixing) | Older AI (Llama-70B, SWE-agent 2024) | +2.7 pts [+1.9, +3.6] | <0.001 | 0.007 | 2,346 |
+| S1 | Check your fix (re-ran own test script after fixing) | DeepSeek-V4-Flash (OpenHands, scale-swe) | -0.7 pts [-2.2, +0.8] | 0.403 | 0.797 | 1,011 |
+| S1 | Check your fix (re-ran own test script after fixing) | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +0.4 pts [-0.5, +1.4] | 0.390 | 0.797 | 2,710 |
+| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +4.1 pts [+2.4, +5.9] | <0.001 | 0.007 | 1,508 |
+| S1 | Check your fix (re-ran own test script after fixing) | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +0.4 pts [-0.6, +1.4] | 0.418 | 0.797 | 3,264 |
+| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | -1.2 pts [-3.0, +0.6] | 0.193 | 0.695 | 1,145 |
+| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.6-27B (SWE-agent, scale-swe) | +1.7 pts [-1.8, +5.3] | 0.351 | 0.797 | 231 |
+| S1 | Check your fix (re-ran own test script after fixing) | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +0.1 pts [-1.5, +1.7] | 0.949 | 1.000 | 1,503 |
+| S10 | Submitted because the context ran out | Older AI (Llama-70B, SWE-agent 2024) | +11.0 pts [+9.2, +12.8] | <0.001 | 0.007 | 1,048 |
+| S10 | Any context-limit exit | Older AI (Llama-70B, SWE-agent 2024) | +11.0 pts [+9.1, +12.8] | <0.001 | 0.007 | 1,048 |
 | S11 | Finding the right file: per-step hazard | Older AI (Llama-70B, SWE-agent 2024) | -12.2 pts [-13.8, -10.7] | <0.001 | <0.001 |  |
-| S12 | First move think vs view (Qwen3-Coder) | Qwen3-Coder (OpenHands, Nebius) | -0.1 pts [-0.7, +0.6] | 0.890 | 1.000 | 2,067 |
-| S13 | First move find_file vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | -0.5 pts [-2.0, +1.0] | 0.492 | 0.800 | 905 |
-| S13 | First move ls vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | -1.2 pts [-2.5, +0.1] | 0.062 | 0.348 | 963 |
-| S13 | First move open vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | +5.0 pts [-1.1, +11.3] | 0.129 | 0.589 | 111 |
-| S13 | First move grep vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | -1.2 pts [-4.0, +1.4] | 0.370 | 0.796 | 307 |
-| S2 | Ran the project's test suite after fixing | Older AI (Llama-70B, SWE-agent 2024) | -0.4 pts [-2.1, +1.1] | 0.547 | 0.847 | 937 |
-| S2 | Ran the project's test suite after fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | -0.2 pts [-2.4, +2.0] | 0.956 | 1.000 | 507 |
-| S2 | Ran the project's test suite after fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | -0.2 pts [-3.8, +3.4] | 0.894 | 1.000 | 230 |
-| S2 | Ran the project's test suite after fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +2.2 pts [-2.4, +7.3] | 0.366 | 0.796 | 174 |
-| S2 | Ran the project's test suite after fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +1.7 pts [-0.9, +4.6] | 0.193 | 0.692 | 474 |
-| S2 | Ran the project's test suite after fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | -1.2 pts [-6.8, +4.3] | 0.709 | 0.977 | 171 |
-| S2 | Ran the project's test suite after fixing | Qwen3.6-27B (SWE-agent, scale-swe) | -0.2 pts [-3.9, +3.3] | 0.894 | 1.000 | 235 |
-| S2 | Ran the project's test suite after fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +0.8 pts [-1.4, +3.1] | 0.437 | 0.796 | 631 |
-| S3 | Ran any code after fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | -0.8 pts [-6.2, +4.7] | 0.863 | 1.000 | 129 |
-| S3 | Ran any code after fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +1.1 pts [-11.2, +13.8] | 0.912 | 1.000 | 24 |
+| S12 | First move think vs view (Qwen3-Coder) | Qwen3-Coder (OpenHands, Nebius) | -0.1 pts [-0.7, +0.6] | 0.891 | 1.000 | 2,067 |
+| S13 | First move find_file vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | -0.5 pts [-2.0, +1.0] | 0.493 | 0.801 | 905 |
+| S13 | First move ls vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | -1.2 pts [-2.5, +0.1] | 0.063 | 0.354 | 963 |
+| S13 | First move open vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | +5.0 pts [-1.1, +11.3] | 0.130 | 0.593 | 111 |
+| S13 | First move grep vs search_dir | Older AI (Llama-70B, SWE-agent 2024) | -1.2 pts [-4.0, +1.4] | 0.371 | 0.797 | 307 |
+| S2 | Ran the project's test suite after fixing | Older AI (Llama-70B, SWE-agent 2024) | -0.4 pts [-2.1, +1.1] | 0.548 | 0.847 | 937 |
+| S2 | Ran the project's test suite after fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | -0.2 pts [-2.4, +2.0] | 0.957 | 1.000 | 507 |
+| S2 | Ran the project's test suite after fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | -0.2 pts [-3.8, +3.4] | 0.895 | 1.000 | 230 |
+| S2 | Ran the project's test suite after fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +2.2 pts [-2.4, +7.3] | 0.367 | 0.797 | 174 |
+| S2 | Ran the project's test suite after fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +1.7 pts [-0.9, +4.6] | 0.194 | 0.695 | 474 |
+| S2 | Ran the project's test suite after fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | -1.2 pts [-6.8, +4.3] | 0.710 | 0.977 | 171 |
+| S2 | Ran the project's test suite after fixing | Qwen3.6-27B (SWE-agent, scale-swe) | -0.2 pts [-3.9, +3.3] | 0.895 | 1.000 | 235 |
+| S2 | Ran the project's test suite after fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +0.8 pts [-1.4, +3.1] | 0.438 | 0.797 | 631 |
+| S3 | Ran any code after fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | -0.8 pts [-6.2, +4.7] | 0.864 | 1.000 | 129 |
+| S3 | Ran any code after fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +1.1 pts [-11.2, +13.8] | 0.913 | 1.000 | 24 |
 | S3 | Ran any code after fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +0.0 pts [+0.0, +0.0] | 1.000 | 1.000 | 8 |
-| S3 | Ran any code after fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | -0.7 pts [-5.7, +5.2] | 0.849 | 1.000 | 38 |
+| S3 | Ran any code after fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | -0.7 pts [-5.7, +5.2] | 0.850 | 1.000 | 38 |
 | S3 | Ran any code after fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | +0.0 pts [+0.0, +0.0] | 1.000 | 1.000 | 12 |
-| S3 | Ran any code after fixing | Qwen3.6-27B (SWE-agent, scale-swe) | +5.6 pts [-5.6, +19.4] | 0.540 | 0.847 | 19 |
-| S3 | Ran any code after fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +8.3 pts [-3.4, +23.4] | 0.244 | 0.742 | 27 |
+| S3 | Ran any code after fixing | Qwen3.6-27B (SWE-agent, scale-swe) | +5.6 pts [-5.6, +19.4] | 0.541 | 0.847 | 19 |
+| S3 | Ran any code after fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +8.3 pts [-3.4, +23.4] | 0.245 | 0.745 | 27 |
 | S4 | Wrote extra tests after fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | +0.0 pts [-1.2, +1.1] | 1.000 | 1.000 | 2,279 |
-| S4 | Wrote extra tests after fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +0.1 pts [-0.7, +0.9] | 0.780 | 1.000 | 4,999 |
-| S4 | Wrote extra tests after fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +3.2 pts [-1.6, +7.8] | 0.188 | 0.692 | 156 |
-| S4 | Wrote extra tests after fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +0.6 pts [-0.2, +1.4] | 0.125 | 0.589 | 5,514 |
-| S4 | Wrote extra tests after fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | -1.3 pts [-3.7, +1.2] | 0.345 | 0.796 | 572 |
-| S4 | Wrote extra tests after fixing | Qwen3.6-27B (SWE-agent, scale-swe) | -3.7 pts [-9.4, +1.6] | 0.199 | 0.692 | 105 |
-| S4 | Wrote extra tests after fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | -2.9 pts [-8.8, +2.4] | 0.315 | 0.796 | 130 |
-| S5 | Cleaned up created files | DeepSeek-V4-Flash (OpenHands, scale-swe) | +0.3 pts [-0.7, +1.3] | 0.656 | 0.939 | 2,324 |
-| S5 | Cleaned up created files | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +0.2 pts [-0.7, +1.2] | 0.574 | 0.855 | 3,281 |
-| S5 | Cleaned up created files | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +1.8 pts [+0.9, +2.8] | <0.001 | <0.001 | 4,032 |
-| S5 | Cleaned up created files | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +0.2 pts [-0.6, +1.1] | 0.624 | 0.911 | 3,899 |
-| S5 | Cleaned up created files | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | +1.1 pts [-1.6, +3.9] | 0.447 | 0.796 | 634 |
-| S5 | Cleaned up created files | Qwen3.6-27B (SWE-agent, scale-swe) | -6.3 pts [-12.4, -0.9] | 0.019 | 0.116 | 85 |
-| S5 | Cleaned up created files | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +1.0 pts [-1.5, +3.5] | 0.493 | 0.800 | 322 |
-| S6 | Ran the project's test suite before fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | +0.7 pts [-0.4, +1.9] | 0.274 | 0.796 | 1,854 |
-| S6 | Ran the project's test suite before fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | -0.6 pts [-1.6, +0.3] | 0.216 | 0.717 | 3,353 |
-| S6 | Ran the project's test suite before fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | -3.6 pts [-4.8, -2.3] | <0.001 | <0.001 | 2,807 |
-| S6 | Ran the project's test suite before fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | -0.4 pts [-1.4, +0.6] | 0.426 | 0.796 | 3,440 |
-| S6 | Ran the project's test suite before fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | +0.2 pts [-1.5, +1.8] | 0.781 | 1.000 | 1,486 |
-| S6 | Ran the project's test suite before fixing | Qwen3.6-27B (SWE-agent, scale-swe) | +0.4 pts [-0.4, +1.1] | 0.364 | 0.796 | 3,367 |
-| S6 | Ran the project's test suite before fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +0.2 pts [-0.8, +1.3] | 0.739 | 0.999 | 2,888 |
-| S7 | Cost: steps | NVIDIA pooled | +1.9 [+1.4, +2.3] | <0.001 | <0.001 | 9,776 |
-| S7 | Cost: characters read (thousands) | NVIDIA pooled | +3.4 [+2.4, +4.4] | <0.001 | <0.001 | 9,776 |
-| S7 | Cost: characters written (thousands) | NVIDIA pooled | +1.5 [+0.9, +2.0] | <0.001 | <0.001 | 9,776 |
-| S7 | Cost: steps | Older AI (Llama-70B, SWE-agent 2024) | +10.0 [+8.8, +11.3] | <0.001 | <0.001 | 1,048 |
+| S4 | Wrote extra tests after fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +0.1 pts [-0.7, +0.9] | 0.781 | 1.000 | 4,999 |
+| S4 | Wrote extra tests after fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +3.2 pts [-1.6, +7.8] | 0.189 | 0.695 | 156 |
+| S4 | Wrote extra tests after fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +0.6 pts [-0.2, +1.4] | 0.126 | 0.593 | 5,514 |
+| S4 | Wrote extra tests after fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | -1.3 pts [-3.7, +1.2] | 0.346 | 0.797 | 572 |
+| S4 | Wrote extra tests after fixing | Qwen3.6-27B (SWE-agent, scale-swe) | -3.7 pts [-9.4, +1.6] | 0.200 | 0.695 | 105 |
+| S4 | Wrote extra tests after fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | -2.9 pts [-8.8, +2.4] | 0.316 | 0.797 | 130 |
+| S5 | Cleaned up created files | DeepSeek-V4-Flash (OpenHands, scale-swe) | +0.3 pts [-0.7, +1.3] | 0.657 | 0.940 | 2,324 |
+| S5 | Cleaned up created files | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | +0.2 pts [-0.7, +1.2] | 0.575 | 0.856 | 3,281 |
+| S5 | Cleaned up created files | Qwen3.5-122B (OpenHands, swe-rebench-v2) | +1.8 pts [+0.9, +2.8] | <0.001 | 0.007 | 4,032 |
+| S5 | Cleaned up created files | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | +0.2 pts [-0.6, +1.1] | 0.625 | 0.912 | 3,899 |
+| S5 | Cleaned up created files | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | +1.1 pts [-1.6, +3.9] | 0.448 | 0.797 | 634 |
+| S5 | Cleaned up created files | Qwen3.6-27B (SWE-agent, scale-swe) | -6.3 pts [-12.4, -0.9] | 0.020 | 0.122 | 85 |
+| S5 | Cleaned up created files | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +1.0 pts [-1.5, +3.5] | 0.494 | 0.801 | 322 |
+| S6 | Ran the project's test suite before fixing | DeepSeek-V4-Flash (OpenHands, scale-swe) | +0.7 pts [-0.4, +1.9] | 0.275 | 0.797 | 1,854 |
+| S6 | Ran the project's test suite before fixing | MiniMax-M2.5 (OpenHands, swe-rebench-v2) | -0.6 pts [-1.6, +0.3] | 0.217 | 0.720 | 3,353 |
+| S6 | Ran the project's test suite before fixing | Qwen3.5-122B (OpenHands, swe-rebench-v2) | -3.6 pts [-4.8, -2.3] | <0.001 | 0.007 | 2,807 |
+| S6 | Ran the project's test suite before fixing | MiniMax-M2.5 (SWE-agent, swe-rebench-v2) | -0.4 pts [-1.4, +0.6] | 0.427 | 0.797 | 3,440 |
+| S6 | Ran the project's test suite before fixing | Qwen3.5-122B (SWE-agent, swe-rebench-v2) | +0.2 pts [-1.5, +1.8] | 0.782 | 1.000 | 1,486 |
+| S6 | Ran the project's test suite before fixing | Qwen3.6-27B (SWE-agent, scale-swe) | +0.4 pts [-0.4, +1.1] | 0.365 | 0.797 | 3,367 |
+| S6 | Ran the project's test suite before fixing | Qwen3.6-27B (SWE-agent, swe-rebench-v2) | +0.2 pts [-0.8, +1.3] | 0.740 | 1.000 | 2,888 |
+| S7 | Cost: steps | NVIDIA pooled | +1.9 [+1.4, +2.3] | <0.001 | 0.007 | 9,776 |
+| S7 | Cost: characters read (thousands) | NVIDIA pooled | +3.4 [+2.4, +4.4] | <0.001 | 0.007 | 9,776 |
+| S7 | Cost: characters written (thousands) | NVIDIA pooled | +1.5 [+0.9, +2.0] | <0.001 | 0.007 | 9,776 |
+| S7 | Cost: steps | Older AI (Llama-70B, SWE-agent 2024) | +10.0 [+8.8, +11.3] | <0.001 | 0.007 | 1,048 |
 | S8 | Reproduce first x issue type — arm x has_code_block | Older AI (Llama-70B, SWE-agent 2024) | +2.6 pts [-1.0, +6.2] | 0.158 | 0.680 |  |
-| S8 | Reproduce first x issue type — arm x has_stack_trace | Older AI (Llama-70B, SWE-agent 2024) | -1.9 pts [-6.3, +2.5] | 0.406 | 0.796 |  |
+| S8 | Reproduce first x issue type — arm x has_stack_trace | Older AI (Llama-70B, SWE-agent 2024) | -1.9 pts [-6.3, +2.5] | 0.406 | 0.797 |  |
 | S8 | Reproduce first x issue type — arm x names_file | Older AI (Llama-70B, SWE-agent 2024) | -0.8 pts [-4.5, +2.9] | 0.679 | 0.953 |  |
 | S8 | Reproduce first x issue type — arm x long_issue | Older AI (Llama-70B, SWE-agent 2024) | +0.2 pts [-3.8, +4.1] | 0.926 | 1.000 |  |
-| S9 | Test first, language = go | NVIDIA pooled | +0.1 pts [-1.3, +1.6] | 0.878 | 1.000 | 1,730 |
-| S9 | Test first, language = java | NVIDIA pooled | +1.5 pts [-1.4, +4.5] | 0.318 | 0.796 | 403 |
-| S9 | Test first, language = javascript | NVIDIA pooled | +0.5 pts [-1.0, +2.1] | 0.491 | 0.800 | 1,171 |
-| S9 | Test first, language = php | NVIDIA pooled | +2.5 pts [-0.8, +5.6] | 0.126 | 0.589 | 347 |
-| S9 | Test first, language = python | NVIDIA pooled | -0.1 pts [-0.9, +0.7] | 0.821 | 1.000 | 3,851 |
-| S9 | Test first, language = rust | NVIDIA pooled | -1.1 pts [-3.1, +0.8] | 0.286 | 0.796 | 750 |
-| S9 | Test first, language = typescript | NVIDIA pooled | -0.1 pts [-1.6, +1.6] | 0.958 | 1.000 | 1,486 |
+| S9 | Test first, language = go | NVIDIA pooled | +0.1 pts [-1.3, +1.6] | 0.879 | 1.000 | 1,730 |
+| S9 | Test first, language = java | NVIDIA pooled | +1.5 pts [-1.4, +4.5] | 0.319 | 0.797 | 403 |
+| S9 | Test first, language = javascript | NVIDIA pooled | +0.5 pts [-1.0, +2.1] | 0.492 | 0.801 | 1,171 |
+| S9 | Test first, language = php | NVIDIA pooled | +2.5 pts [-0.8, +5.6] | 0.127 | 0.593 | 347 |
+| S9 | Test first, language = python | NVIDIA pooled | -0.1 pts [-0.9, +0.7] | 0.822 | 1.000 | 3,851 |
+| S9 | Test first, language = rust | NVIDIA pooled | -1.1 pts [-3.1, +0.8] | 0.287 | 0.797 | 750 |
+| S9 | Test first, language = typescript | NVIDIA pooled | -0.1 pts [-1.6, +1.6] | 0.959 | 1.000 | 1,486 |
 | S9 | Test first x language (vs python) — arm x lang_go | NVIDIA pooled | +0.2 pts [-1.9, +2.3] | 0.822 | 1.000 |  |
-| S9 | Test first x language (vs python) — arm x lang_java | NVIDIA pooled | +1.6 pts [-2.3, +5.5] | 0.412 | 0.796 |  |
+| S9 | Test first x language (vs python) — arm x lang_java | NVIDIA pooled | +1.6 pts [-2.3, +5.5] | 0.412 | 0.797 |  |
 | S9 | Test first x language (vs python) — arm x lang_javascript | NVIDIA pooled | +0.7 pts [-1.5, +2.9] | 0.557 | 0.847 |  |
 | S9 | Test first x language (vs python) — arm x lang_php | NVIDIA pooled | +2.6 pts [-1.6, +6.8] | 0.230 | 0.731 |  |
-| S9 | Test first x language (vs python) — arm x lang_rust | NVIDIA pooled | -1.0 pts [-3.8, +1.8] | 0.477 | 0.800 |  |
+| S9 | Test first x language (vs python) — arm x lang_rust | NVIDIA pooled | -1.0 pts [-3.8, +1.8] | 0.477 | 0.801 |  |
 | S9 | Test first x language (vs python) — arm x lang_typescript | NVIDIA pooled | +0.0 pts [-2.2, +2.3] | 0.973 | 1.000 |  |
 
 - Steps and characters are counts or thousands, not points.
