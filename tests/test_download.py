@@ -87,3 +87,28 @@ def test_dry_run_does_not_download(cfg: Config) -> None:
 def test_unknown_dataset_key(cfg: Config) -> None:
     with pytest.raises(KeyError):
         download(cfg, only=["nope"], api=FakeApi(), fetch=make_fetch([]), log=lambda _: None)
+
+
+class OfflineApi:
+    def list_repo_tree(self, *args: object, **kwargs: object) -> list[object]:
+        raise ConnectionError("no network")
+
+
+def test_offline_uses_complete_verified_manifest(cfg: Config) -> None:
+    paths = download(cfg, api=FakeApi(), fetch=make_fetch([]), log=lambda _: None)
+    msgs: list[str] = []
+    again = download(cfg, api=OfflineApi(), fetch=make_fetch([]), log=msgs.append)
+    assert sorted(again) == sorted(paths)
+    assert "Hub unreachable" in msgs[0]
+
+
+def test_offline_fails_if_a_file_changed(cfg: Config) -> None:
+    paths = download(cfg, api=FakeApi(), fetch=make_fetch([]), log=lambda _: None)
+    paths[0].write_bytes(b"changed")
+    with pytest.raises(ConnectionError):
+        download(cfg, api=OfflineApi(), fetch=make_fetch([]), log=lambda _: None)
+
+
+def test_offline_fails_without_manifest(cfg: Config) -> None:
+    with pytest.raises(ConnectionError):
+        download(cfg, api=OfflineApi(), fetch=make_fetch([]), log=lambda _: None)

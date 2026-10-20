@@ -76,6 +76,30 @@ def list_remote_files(
     return sorted(out, key=lambda f: (f.dataset, f.path))
 
 
+def manifest_files(
+    cfg: Config, manifest: dict[str, dict[str, Any]], only: Iterable[str] | None = None
+) -> list[RemoteFile]:
+    """The pinned files as recorded in the manifest (used when the Hub cannot be reached).
+
+    Only entries at each dataset's pinned repository and revision that match its
+    patterns are returned. Raises ``LookupError`` if a dataset has no such entry.
+    """
+    out: list[RemoteFile] = []
+    for key, spec in dataset_specs(cfg, only).items():
+        found = [
+            RemoteFile(key, e["repo_id"], e["revision"], e["path"], int(e["size"]), e["sha256"])
+            for k, e in manifest.items()
+            if k.startswith(f"{key}/")
+            and e.get("repo_id") == spec["hf_id"]
+            and e.get("revision") == spec["revision"]
+            and any(fnmatch.fnmatch(e["path"], p) for p in spec["patterns"])
+        ]
+        if not found:
+            raise LookupError(f"no verified files for {key} in the manifest")
+        out += found
+    return sorted(out, key=lambda f: (f.dataset, f.path))
+
+
 def local_path(cfg: Config, f: RemoteFile) -> Path:
     """Where a remote file is stored locally: ``data/raw/<dataset>/<path in repo>``."""
     return cfg.path("raw") / f.dataset / Path(f.path)
@@ -145,9 +169,22 @@ def download(
         If a file's checksum does not match the Hub's after download.
     """
     fetch = fetch or _hf_fetch
-    files = list_remote_files(cfg, only, api)
     manifest_path = cfg.path("raw") / "MANIFEST.json"
     manifest = _load_manifest(manifest_path)
+    try:
+        files = list_remote_files(cfg, only, api)
+    except Exception as exc:  # no network: fall back to a complete, verified manifest
+        try:
+            files = manifest_files(cfg, manifest, only)
+        except LookupError:
+            raise exc from None
+        missing = [f for f in files if not _is_verified(manifest.get(f"{f.dataset}/{f.path}"),
+                                                         f, local_path(cfg, f))]
+        if missing or verify:
+            raise
+        log(f"Hub unreachable ({type(exc).__name__}); using the {len(files)} verified files "
+            "recorded in MANIFEST.json")
+        return [local_path(cfg, f) for f in files]
     total = sum(f.size for f in files)
     log(f"{len(files)} files, {total / 1e9:.2f} GB in total")
     paths: list[Path] = []

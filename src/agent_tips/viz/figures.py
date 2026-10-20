@@ -69,7 +69,8 @@ def _save(fig: Figure, name: str, cfg: Config) -> Path:
     png = cfg.root / "docs" / "figures" / "paper"
     pdf.mkdir(parents=True, exist_ok=True)
     png.mkdir(parents=True, exist_ok=True)
-    fig.savefig(pdf / f"{name}.pdf", bbox_inches="tight")
+    # no creation date, so re-running gives byte-identical files
+    fig.savefig(pdf / f"{name}.pdf", bbox_inches="tight", metadata={"CreationDate": None})
     fig.savefig(png / f"{name}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
     return pdf / f"{name}.pdf"

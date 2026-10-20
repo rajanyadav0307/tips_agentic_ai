@@ -46,6 +46,8 @@
 - Bootstrap p-values can no longer be exactly 0 (they use (count + 1) / (reps + 1)).
 - P3 counts "opposite sign" only when both estimates are non-zero; it is also reported without underpowered pairs.
 - Reports create the `docs/` folder if it is missing.
+- `agent-tips download` (and so `run-all`) works offline when every pinned file is already downloaded and verified.
+- Paper figure PDFs carry no creation date, so re-running gives identical files.
 - Analysis rows now load in a fixed order, so random draws (and results) are identical across runs.
 - File names inside `/testbed` no longer count as test scripts. The exploratory code had this bug.
 - Test-tool names inside paths no longer count as test-suite runs.
