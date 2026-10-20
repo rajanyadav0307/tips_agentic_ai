@@ -1,5 +1,7 @@
 # Project Plan: From Current State to Paper-Ready Results
 
+> **Update 2026-10-20:** Phases F–H below (machine learning on per-bug tip effects) were not started. Raw-data checks showed little signal for them ([ML_BRAINSTORM.md](ML_BRAINSTORM.md)). The machine-learning work is now planned as a separate study, [ONE_TRY_STUDY_PLAN.md](ONE_TRY_STUDY_PLAN.md) (Paper 2), awaiting the owner's approval. Phases A–E of this plan (Paper 1) are complete.
+
 **Version:** 2 (detailed), 2026-10-20
 **Project:** *Do Tips for AI Coding Agents Actually Help?* (results so far in [DS_PROJECT_PROPOSAL.md](DS_PROJECT_PROPOSAL.md))
 **Rules:**
@@ -430,6 +432,139 @@ All figures use a colorblind-safe palette and are saved as vector PDF plus PNG.
 - Two fixes found while drawing the figures: bootstrap p-values are floored at 1/(reps + 1), and P3 no longer counts an estimate of exactly 0 as an "opposite sign" (42% → 37%); P3 is also reported without the underpowered pairs (9.7 points, 38%).
 - An end-to-end test on a larger fake project runs Steps 3–8; coverage rose to 96%.
 - The generated tables and paper figures are kept in git (`outputs/tables/`, `outputs/figures/paper/`) so the paper compiles from a fresh copy.
+
+### Phases F–H: Machine learning as a main contribution (added 2026-10-20)
+
+**In plain words:** so far we measured the *average* effect of each tip with statistics. The owner chose to make machine learning a main part of the project. We will:
+1. train models that predict, for each bug, how much a tip helps or hurts *on that bug* (F);
+2. turn those predictions into a **recommender** that tells the agent, bug by bug, whether to reproduce first, and measure how many more bugs it would fix (G);
+3. reframe the paper around this (H).
+
+The machine learning learns only from the fair same-bug comparisons, and is always judged on bugs it never saw.
+
+**New paper framing (working title):** *Learning When Coding Agents Should Reproduce the Bug First: Causal Machine Learning on Natural Experiments in Agent Trajectories.* The current results (average effects, the simple-analysis trap) become the foundation sections.
+
+**Status:** these questions were added after the average results were known, so they are pre-specified in F1 before any machine-learning run and labelled as such in the paper.
+
+**Related work (searched 2026-10-20):**
+- Causal forests and double machine learning are established in medicine and economics.
+- No study applies them to coding-agent logs or learns per issue when to reproduce first. The closest are:
+  - reproduction-test work (Agentless, SWE-Doctor, SWT-Bench): no per-issue effects;
+  - training work that improves agents ("Teaching Agents to Code Reliably", arXiv 2610.03984): no causal effects or per-issue policy;
+  - off-policy evaluation of LLM agents (arXiv 2606.05558): generic, and impractical for long trajectories.
+- Our natural experiments avoid that problem, because each choice is compared within the same bug.
+
+#### New research questions
+
+| RQ | Question | Hypothesis (frozen in F1) |
+| --- | --- | --- |
+| RQ7 | Can machine learning predict, from bug facts alone, for which bugs a tip helps or hurts? | **H4:** on held-out bugs, predicted effects explain real effects (best-linear-predictor slope > 0), for P1 and P2 |
+| RQ8 | Would following a learned recommendation fix more bugs than any fixed rule? | **H5:** on held-out bugs, the recommender beats the best "always do X" rule |
+| RQ9 | Does the simple-analysis trap also fool machine learning? | **H6:** a recommender trained the usual way (pooled data, no same-bug comparison) does worse than the causal one, measured fairly |
+| RQ10 | Do learned patterns carry over to an AI the model never saw? | Descriptive: train on six newer configurations, test on the seventh |
+
+#### How it fits the current project
+
+| Already built | Reused for |
+| --- | --- |
+| `analysis.load()`: 353,009 tries with choices and fair groups | Training data: P1 (older AI, issue × day) and P2 (newer AIs, configuration × issue) |
+| `issues.parquet` (length, code block, stack trace, names a file) | Bug features |
+| `fair_estimate()` / `build_strata()` | Measuring the real effect inside predicted groups, and the value of a recommendation |
+| `_cluster_ols()`, bootstrap by issue | Model tests and uncertainty |
+| `fe_interactions()` (S8/S9) | The simple linear baseline the models must beat |
+| `utils/device.py`, `gpu` extra | Optional text embeddings on GPU |
+| `viz/`, `numbers.tex`, `big_project` fixture, `run-all` | Figures, paper numbers, end-to-end tests, reproducibility |
+
+| Missing today | Added |
+| --- | --- |
+| Issue text is not kept after Step 5 | `issue_text.parquet` (issue key, repository, language, text) |
+| No ML library | `scikit-learn` (installers for all 4 platforms; EconML has none for Linux ARM64) |
+
+**Data size:** informative groups are 1,870 for P1 (1,048 bugs) and 9,776 bugs for P2. This is modest for machine learning; "no reliable pattern" is a possible, publishable outcome, and the checks below make it trustworthy either way.
+
+#### Phase F: Learn per-bug effects (Steps 5–7)
+
+**F0. Housekeeping:** push the three local Phase E commits (no tag) so CI checks them. The release moves to the end of Phase H.
+
+**F1. Freeze the rules:** add §8 to `docs/01_problem_and_hypotheses.md` (RQ7–RQ10, H4–H6, features, models, folds, metrics, decision rules, Holm correction over H4–H6 per AI group). Tag `analysis-plan-v2-ml` before any run.
+
+**F2. Bug features (`features/issue_text.py`)**
+- Facts known before the attempt starts:
+  - the four existing issue facts;
+  - repository (30 most common, otherwise "other") and language;
+  - issue text as 50 numbers (TF-IDF, then truncated SVD, fitted inside each training fold).
+- Optional GPU feature set: sentence embeddings of the issue text (model revision pinned; CPU fallback).
+- Never used: anything from the attempt itself, or other attempts' outcomes.
+
+**F3. Models (`models/hte.py`)**, all trained with 5-fold cross-fitting split by bug:
+
+| Model | What it is |
+| --- | --- |
+| Constant | One average effect for every bug (the current analysis); "no heterogeneity" baseline |
+| Linear | Effect varies linearly with the bug facts (like S8/S9) |
+| R-learner + gradient boosting (main) | Removes each group's averages (exactly the fair comparison), then learns the effect with boosted trees |
+| R-learner + random forest | Same, with a forest (close to a causal forest) |
+| DR-learner + gradient boosting | A second standard causal-ML recipe, as a check |
+
+- Synthetic tests with a known effect: each learner must recover it, and must find nothing when the effect is constant.
+
+**F4. Model comparison on unseen bugs (`evaluation/hte_checks.py`)**
+- **R-loss** (the standard score for comparing such models): lower is better; each model vs the constant baseline.
+- **Best linear predictor test** (issue-clustered): H4.
+- **GATES:** five groups by predicted effect, fair effect measured in each with `fair_estimate()`. A real model shows a rising staircase.
+- **RATE / AUTOC:** how much better the bugs ranked first are, compared with average.
+- **Null check:** shuffle the features across bugs; the signal must vanish.
+- **Stability:** three seeds.
+- **Explanation:** feature importance, and the effect by top features.
+
+**Checkpoint F:** model comparison in plain words.
+
+#### Phase G: The recommender (Steps 6–7)
+
+**G1. Recommendation rule:** "reproduce / test first on this bug" if the predicted effect is above 0. A cost-aware version also requires the gain to outweigh the extra steps (cost from S7).
+
+**G2. Value on unseen bugs:** within each held-out group, measure the success rate of attempts whose choice *matches* the recommendation versus each fixed rule ("always", "never"). This is the same fair comparison, so no simulation of the agent is needed. CIs come from the issue bootstrap. **H5.**
+
+**G3. The trap, in machine-learning form:** train the usual way (predict success from bug facts plus the choice, on pooled attempts), recommend whichever choice predicts higher success, and evaluate fairly as in G2. **H6:** the causal recommender beats it.
+
+**G4. Transfer:** for the newer AIs, train on six configurations and test on the seventh, in turn (RQ10).
+
+**Checkpoint G:** recommender results in plain words.
+
+#### Phase H: Communicate and release (Step 8)
+
+- **H1. Integrate:**
+  - `agent-tips ml` inside `run-all` (after `evaluate`, before `figures`);
+  - results in `outputs/results/ml.parquet` and `ml.json`;
+  - generated `docs/09_machine_learning.md`.
+- **H2. Figures:**
+  - F9: model comparison (R-loss, best-linear-predictor slope);
+  - F10: GATES staircase, ML vs linear;
+  - F11: what drives the effect;
+  - F12: value of the recommender vs fixed rules vs the naive ML recommender.
+- **H3. Paper rewrite:**
+  - new title and abstract;
+  - the method section gains causal ML;
+  - Results add RQ7–RQ10;
+  - Threats add overfitting, P2's mid-run choice, and the data size;
+  - all numbers from `numbers.tex`.
+- **H4. Tests and checks:**
+  - synthetic recovery and null tests;
+  - `big_project` and `run-all` tests include `ml`;
+  - coverage ≥ 85%;
+  - all 4 platforms.
+- **H5. Release:**
+  - resume the fresh-copy reproducibility check (identical results required);
+  - push, tag `v1.0.0`, deploy the docs site;
+  - the GitHub release page needs `gh` or the web UI.
+
+**Checkpoint H:** paper and release; plain-words summary to the owner.
+
+**Risks:**
+- Too little data for a reliable pattern: report honestly; the null check, baselines and the R-loss comparison make it clear.
+- P2's choice is made mid-run: its per-bug effects are same-bug associations, not coin flips (P1 is a coin flip).
+- Fishing: the rules are frozen in F1, with only H4–H6 tested and Holm-corrected; everything else is labelled descriptive.
+- Overfitting: all scores are on bugs never seen in training; folds are split by bug.
 
 ## 5. Dependency overview
 
