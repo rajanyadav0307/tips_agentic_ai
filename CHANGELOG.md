@@ -4,6 +4,13 @@
 
 ### Added
 
+- Phase A:
+  - frozen hypotheses and analysis plan (`docs/01_problem_and_hypotheses.md`, tag `analysis-plan-v1`);
+  - `agent-tips download` with pinned revisions and SHA-256 verification;
+  - DuckDB raw-data views (`agent_tips.data.load`);
+  - data inventory (`docs/02_data_inventory.md`);
+  - data cards moved to `docs/data/`.
+
 - Phase 0 project setup:
   - `agent_tips` package with the `agent-tips` CLI;
   - config loading, seed and device helpers;

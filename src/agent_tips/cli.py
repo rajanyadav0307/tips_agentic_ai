@@ -15,9 +15,8 @@ from agent_tips import __version__
 from agent_tips.config import load_config
 from agent_tips.utils.device import select_device, torch_available
 
-# subcommand -> (procedure step, plan phase that implements it)
-STEPS: dict[str, tuple[str, str]] = {
-    "download": ("Step 2: collect data", "A"),
+# Steps not built yet: subcommand -> (procedure step, plan phase that implements it)
+PENDING: dict[str, tuple[str, str]] = {
     "clean": ("Step 3: clean and prepare", "B"),
     "eda": ("Step 4: explore", "B"),
     "features": ("Step 5: create features", "C"),
@@ -39,13 +38,25 @@ def _env() -> int:
     return 0
 
 
+def _download(args: argparse.Namespace) -> int:
+    from agent_tips.data.download import download
+
+    paths = download(load_config(), only=args.only, verify=args.verify, dry_run=args.dry_run)
+    print(f"done: {len(paths)} files")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(prog="agent-tips", description=__doc__)
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("env", help="show platform, paths and compute device")
-    for name, (step, _) in STEPS.items():
+    dl = sub.add_parser("download", help="Step 2: download pinned data and verify checksums")
+    dl.add_argument("--only", nargs="+", metavar="DATASET", help="dataset keys from the config")
+    dl.add_argument("--verify", action="store_true", help="re-hash files already downloaded")
+    dl.add_argument("--dry-run", action="store_true", help="only show what would be downloaded")
+    for name, (step, _) in PENDING.items():
         sub.add_parser(name, help=step)
     return parser
 
@@ -55,7 +66,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "env":
         return _env()
-    step, phase = STEPS[args.command]
+    if args.command == "download":
+        return _download(args)
+    step, phase = PENDING[args.command]
     print(f"'{args.command}' ({step}) is not implemented yet; it is added in phase {phase}.")
     return 2
 

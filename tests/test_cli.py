@@ -1,6 +1,6 @@
 import pytest
 
-from agent_tips.cli import STEPS, main
+from agent_tips.cli import PENDING, main
 
 
 def test_env_runs(capsys: pytest.CaptureFixture[str]) -> None:
@@ -8,7 +8,7 @@ def test_env_runs(capsys: pytest.CaptureFixture[str]) -> None:
     assert "device" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("command", sorted(STEPS))
+@pytest.mark.parametrize("command", sorted(PENDING))
 def test_unbuilt_steps_exit_with_code_2(command: str) -> None:
     assert main([command]) == 2
 

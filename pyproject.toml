@@ -16,6 +16,7 @@ dependencies = [
     "scipy>=1.13",
     "statsmodels>=0.14",
     "matplotlib>=3.9",
+    "huggingface-hub>=0.25",
 ]
 
 [project.optional-dependencies]

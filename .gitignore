@@ -23,8 +23,6 @@ Thumbs.db
 
 # Data: raw downloads and large outputs stay out of git (rebuilt with `agent-tips`)
 data/**
-!data/**/
-!data/**/DATASET.md
 outputs/
 analysis/exploratory/data/
 *.parquet

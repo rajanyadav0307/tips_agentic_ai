@@ -8,27 +8,44 @@ paths:
   results: outputs/results
   figures: outputs/figures
 
+# Every dataset is pinned to a Hugging Face revision (commit) recorded on 2026-10-20.
+# `patterns` selects the files to download (glob, relative to the repository root).
 datasets:
   older_ai:
     hf_id: nebius/SWE-agent-trajectories
+    revision: 68195a1450865274106246d0d0296a1d6807b88e
+    patterns: ["data/*.parquet"]
     model_name: swe-agent-llama-70b
   newer_ai_nebius:
     hf_id: nebius/SWE-rebench-openhands-trajectories
+    revision: 35455389ab51bf5e2306bfd436ef72d0f98bf882
+    patterns: ["trajectories.parquet"]
   newer_ai_nvidia:
     hf_id: nvidia/Open-SWE-Traces
-    subsets:
-      - sweagent/minimax_m25/swe-rebench-v2
-      - sweagent/qwen35_122b/swe-rebench-v2
-      - sweagent/qwen36_27b/scale-swe
-      - sweagent/qwen36_27b/swe-rebench-v2
-      - openhands/minimax_m25/swe-rebench-v2
-      - openhands/qwen35_122b/swe-rebench-v2
-      - openhands/deepseek_v4_flash_0731/scale-swe
+    revision: 1db674173119d71df45c22007af99e214600711a
+    # The 7 subsets that use the str_replace_editor tool and have repeated tries per issue.
+    patterns:
+      - data/sweagent/minimax_m25/swe-rebench-v2/*.parquet
+      - data/sweagent/qwen35_122b/swe-rebench-v2/*.parquet
+      - data/sweagent/qwen36_27b/scale-swe/*.parquet
+      - data/sweagent/qwen36_27b/swe-rebench-v2/*.parquet
+      - data/openhands/minimax_m25/swe-rebench-v2/*.parquet
+      - data/openhands/qwen35_122b/swe-rebench-v2/*.parquet
+      - data/openhands/deepseek_v4_flash_0731/scale-swe/*.parquet
+  gold_extra:
+    hf_id: nebius/SWE-bench-extra
+    revision: 11dcbfb30e19552df2a2f8030bd764adc95c92a5
+    patterns: ["data/train-*.parquet"]
+  gold_dev:
+    hf_id: princeton-nlp/SWE-bench
+    revision: e48e2bd1e9fecd5bbd641e9414ac59da9f2e69f6
+    patterns: ["data/dev-*.parquet"]
 
 analysis:
   bootstrap_reps: 2000
   permutation_reps: 1000
-  fdr_alpha: 0.05
+  fdr_q: 0.05
+  equivalence_margin: 0.02   # ±2 points, used to claim "no meaningful difference"
 
 compute:
   device: auto   # auto | cpu | cuda | mps

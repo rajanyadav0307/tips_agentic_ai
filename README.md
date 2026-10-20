@@ -59,7 +59,7 @@ Code is released under the [MIT License](LICENSE). To cite this project, use [`C
 
 ## Data
 
-Raw data is not stored in git. It is downloaded from Hugging Face:
+Raw data is not stored in git. `uv run agent-tips download` fetches about 25 GB into `data/raw/`. Every file is pinned to a dataset revision and checked against the SHA-256 checksum published by Hugging Face. Downloads are recorded in `data/raw/MANIFEST.json`, so reruns skip verified files. See [`docs/02_data_inventory.md`](docs/02_data_inventory.md). The data comes from Hugging Face:
 [nebius/SWE-agent-trajectories](https://huggingface.co/datasets/nebius/SWE-agent-trajectories),
 [nebius/SWE-rebench-openhands-trajectories](https://huggingface.co/datasets/nebius/SWE-rebench-openhands-trajectories),
 [nvidia/Open-SWE-Traces](https://huggingface.co/datasets/nvidia/Open-SWE-Traces).

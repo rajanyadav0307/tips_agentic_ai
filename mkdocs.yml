@@ -4,6 +4,12 @@ theme:
   name: material
 nav:
   - Home: index.md
+  - Step reports:
+      - 1. Problem and hypotheses: 01_problem_and_hypotheses.md
+      - 2. Data inventory: 02_data_inventory.md
+  - Data cards:
+      - Older AI (Nebius SWE-agent): data/older_ai.md
+      - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md
   - Project:
       - Plan: project/PROJECT_PLAN.md
       - Proposal and results: project/DS_PROJECT_PROPOSAL.md

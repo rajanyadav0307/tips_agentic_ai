@@ -53,8 +53,8 @@
 | Step | Status | Notes |
 | --- | --- | --- |
 | Setup (Phase 0) | ✅ Done | Package, uv lockfile for 4 platforms, ruff/mypy/pytest, MkDocs, CI passing on all 4 platforms, MIT license, CITATION.cff |
-| 1 Problem | ⚠️ Mostly done | Research questions exist; hypotheses not yet written formally or frozen |
-| 2 Data | ⚠️ Mostly done | Data is local or streamed, but versions aren't pinned, there is no checksum manifest, no `download` command, and the gold patches (SWE-bench-extra) are not downloaded yet |
+| 1 Problem | ✅ Done (Phase A) | Hypotheses and analysis plan frozen in `docs/01_problem_and_hypotheses.md` (tag `analysis-plan-v1`) |
+| 2 Data | ✅ Done (Phase A) | 121 pinned, checksummed files (24.35 GB); `agent-tips download`; loaders; inventory in `docs/02_data_inventory.md` |
 | 3 Clean | ⚠️ Exploratory only | Filters live inside the scripts in `analysis/exploratory/` |
 | 4 EDA | ❌ Missing | — |
 | 5 Features | ⚠️ Exploratory only | Separate regex labelers per script; labels not validated |
@@ -144,7 +144,7 @@ The label-validation sample (C2) is saved as an easy-to-read spreadsheet, so the
 - **Depends on:** A4.
 - **Effort:** 2 h.
 
-**Checkpoint A:** hypotheses frozen and tagged; data downloaded and verified; plain-words summary to the owner.
+**Checkpoint A:** hypotheses frozen and tagged; data downloaded and verified; plain-words summary to the owner. ✅ **Completed 2026-10-20**; awaiting the owner's review.
 
 ---
 
