@@ -61,11 +61,13 @@ def register_raw_views(con: duckdb.DuckDBPyConnection, cfg: Config) -> list[str]
             )
             created.append(f"raw_{key}")
     if has_files(cfg, "newer_ai_nvidia"):
+        # On Windows DuckDB may report file names with backslashes; normalize first.
+        fname = "replace(filename, '\\', '/')"
         con.execute(
             "CREATE OR REPLACE VIEW raw_newer_ai_nvidia AS SELECT *, "
-            f"regexp_extract(filename, '{NVIDIA_PATH_RE}', 1) AS scaffold, "
-            f"regexp_extract(filename, '{NVIDIA_PATH_RE}', 2) AS teacher, "
-            f"regexp_extract(filename, '{NVIDIA_PATH_RE}', 3) AS task_source "
+            f"regexp_extract({fname}, '{NVIDIA_PATH_RE}', 1) AS scaffold, "
+            f"regexp_extract({fname}, '{NVIDIA_PATH_RE}', 2) AS teacher, "
+            f"regexp_extract({fname}, '{NVIDIA_PATH_RE}', 3) AS task_source "
             f"FROM read_parquet({_sql_list(raw_globs(cfg, 'newer_ai_nvidia'))}, "
             "filename = true, union_by_name = true)"
         )
