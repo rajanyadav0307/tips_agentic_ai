@@ -1,0 +1,20 @@
+runs=67049 issues=6306 resolved=0.480
+
+=== 1. Test script before the first fix? ===
+share of runs: {'test first': 0.979, 'never edits': 0.012, 'fix first': 0.009}
+median step of the first test script: 23.0
+simple comparison (all issues pooled), test first minus fix first: +12.09 pts
+test first minus fix first, within issue (few runs; not a coin flip):
+   resolved:           -0.73 pts  [-3.79, +1.99]  issues=216 groups=216 runs=2505
+   hit the 100-step cap: -3.09 pts  [-6.69, +0.39]  issues=216 groups=216 runs=2505
+
+=== 2. Fair coin flips: same issue, identical history so far, different next action ===
+step 0: 2070 forks in 2070 issues; most common choices {'think': 13778, 'view': 9123, 'plan': 6}
+   think minus view: -0.06 pts  [-0.79, +0.64]  issues=2067 groups=2067 runs=22871
+   simple comparison (all issues pooled), think minus view: +3.55 pts
+step 1: 314 forks in 266 issues; most common choices {'view': 506, 'think': 310, 'bash-look': 113, 'run': 19}
+   view minus think: -0.46 pts  [-3.69, +2.75]  issues=192 groups=216 runs=659
+step 2: 193 forks in 172 issues; most common choices {'view': 295, 'think': 196, 'bash-look': 62, 'run': 6}
+   view minus think: -1.08 pts  [-5.48, +2.87]  issues=126 groups=144 runs=430
+step 3: 103 forks in 83 issues; most common choices {'view': 113, 'bash-look': 102, 'think': 60, 'run': 7}
+   view minus bash-look: +1.18 pts  [-3.92, +7.19]  issues=42 groups=53 runs=141

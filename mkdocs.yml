@@ -1,0 +1,25 @@
+site_name: Do Tips for AI Coding Agents Help?
+repo_url: https://github.com/rajanyadav0307/tips_agentic_ai
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Project:
+      - Plan: project/PROJECT_PLAN.md
+      - Proposal and results: project/DS_PROJECT_PROPOSAL.md
+      - Project options: project/PROJECT_OPTIONS.md
+      - Datasets: project/DATASET_OPTIONS.md
+      - First related-work search: project/RELATED_WORK.md
+  - API reference: reference.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: numpy
+validation:
+  links:
+    not_found: info
+    unrecognized_links: info

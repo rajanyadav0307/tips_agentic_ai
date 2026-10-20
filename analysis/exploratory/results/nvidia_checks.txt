@@ -1,0 +1,60 @@
+tries=254933 issues=117664 labeled=83.2%
+
+=== 1. How often does each AI write a test/repro script before fixing? ===
+arm                                         fix first  no edit found  test first  tries
+subset
+openhands/deepseek_v4_flash_0731/scale-swe      0.887          0.010       0.103  26453
+openhands/minimax_m25/swe-rebench-v2            0.470          0.023       0.507  43603
+openhands/qwen35_122b/swe-rebench-v2            0.081          0.021       0.898  40463
+sweagent/minimax_m25/swe-rebench-v2             0.407          0.024       0.569  46819
+sweagent/qwen35_122b/swe-rebench-v2             0.152          0.005       0.843  20334
+sweagent/qwen36_27b/scale-swe                   0.009          0.012       0.979  40802
+sweagent/qwen36_27b/swe-rebench-v2              0.047          0.015       0.938  36459
+
+label missing (resolved = -1) by arm: {'fix first': 0.177, 'no edit found': 0.107, 'test first': 0.165}
+
+=== 2. Test first minus fix first: simple comparison vs same-issue comparison ===
+openhands/deepseek_v4_flash_0731/scale-swe    simple -3.0 | same issue -0.9 pts [-2.6, +0.7]  (issues=884, runs=1768)
+openhands/minimax_m25/swe-rebench-v2          simple +12.2 | same issue +0.1 pts [-0.9, +1.0]  (issues=2701, runs=7414)
+openhands/qwen35_122b/swe-rebench-v2          simple +15.5 | same issue -0.7 pts [-2.8, +1.1]  (issues=886, runs=2287)
+sweagent/minimax_m25/swe-rebench-v2           simple +7.7 | same issue +0.5 pts [-0.4, +1.5]  (issues=3263, runs=9001)
+sweagent/qwen35_122b/swe-rebench-v2           simple +21.5 | same issue +1.7 pts [-0.6, +4.1]  (issues=687, runs=1803)
+sweagent/qwen36_27b/scale-swe                 simple +22.7 | same issue -0.1 pts [-3.6, +3.5]  (issues=192, runs=528)
+sweagent/qwen36_27b/swe-rebench-v2            simple +21.5 | same issue +1.3 pts [-0.8, +3.4]  (issues=617, runs=1552)
+ALL SUBSETS                                   simple +0.4 | same issue +0.3 pts [-0.3, +0.8]  (issues=9230, runs=24353)
+
+=== 3. Near coin flips: same issue, identical action history, then a different next action ===
+fork pairs=152058 in 74350 issues; median fork step=3
+most common choices at the fork: {'look vs look': 74956, 'view vs view': 34018, 'look vs view': 28698, 'repro_create vs repro_create': 6140, 'look vs repro_create': 1597, 'repro_create vs view': 1513}
+test script now vs edit code now: +0.0 pts [+0.0, +0.0]  (pairs=11, issues=9, median step=6)
+test script now vs anything else now: -0.0 pts [-1.1, +1.0]  (pairs=3594, issues=2525, median step=4)
+
+=== 4. Same-issue comparison for 'ran code before the first edit' ===
+ran code first minus edited before running: -0.1 pts [-0.7, +0.5]  (issues=8221, runs=20634)
+
+=== 5. Does testing first cost extra steps? (same issue; tries that finished normally) ===
+steps, test first minus fix first: +1.8 steps [+1.4, +2.3]  (issues=9230, runs=24353)
+
+=== 6. Hints of removed tries (NVIDIA dropped tries that hit the step limit or had no patch) ===
+share of issues with fewer tries than the subset maximum: 0.5
+test-first share | issues with all tries kept: 0.689 | issues missing some tries: 0.727
+
+=== 7. Other tips after the fix (tries that edited code; same issue) ===
+ran code after fixing                    share yes 99.7% | simple +9.0 | same issue +1.0 pts [-2.5, +4.7]  (issues=244, runs=567)
+ran the project's tests after fixing     share yes 96.4% | simple +10.1 | same issue +1.0 pts [-0.3, +2.2]  (issues=2070, runs=5187)
+wrote extra tests after fixing           share yes 73.9% | simple -7.4 | same issue +0.3 pts [-0.2, +0.8]  (issues=13480, runs=35468)
+cleaned up files (rm)                    share yes 75.9% | simple -0.4 | same issue +0.8 pts [+0.3, +1.3]  (issues=15155, runs=39104)
+ran the project's tests before fixing    share yes 38.7% | simple -10.6 | same issue -0.5 pts [-0.9, -0.0]  (issues=19955, runs=51986)
+
+=== 8. Cost of testing first (same issue; tries that finished normally) ===
+text written by the AI (thousand chars): +1.5 [+0.9, +2.0]  (issues=9230, runs=24353)
+text read by the AI (thousand chars): +3.7 [+2.7, +4.6]  (issues=9230, runs=24353)
+
+=== 9. Test first minus fix first by programming language (same issue, all AIs) ===
+go           test-first share 65% | -0.0 pts [-1.5, +1.5]  (issues=1670, runs=4418)
+java         test-first share 67% | +2.4 pts [-0.6, +5.6]  (issues=379, runs=1006)
+javascript   test-first share 80% | +1.1 pts [-0.6, +2.8]  (issues=1118, runs=3042)
+php          test-first share 82% | +2.5 pts [-0.7, +5.8]  (issues=329, runs=905)
+python       test-first share 68% | -0.2 pts [-0.9, +0.6]  (issues=3675, runs=9436)
+rust         test-first share 73% | +0.4 pts [-1.8, +2.4]  (issues=612, runs=1629)
+typescript   test-first share 75% | +0.1 pts [-1.4, +1.7]  (issues=1407, runs=3816)

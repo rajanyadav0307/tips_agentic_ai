@@ -1,0 +1,53 @@
+=== 0. Data ===
+runs=74792  same-input runs=73738  issues=3591
+first-action arms (share of same-input runs): {'S': 0.479, 'R': 0.464, 'X': 0.034, 'O': 0.022}
+runs with an evaluation timestamp: 64274 | without (all unresolved): 10518
+
+=== 1+2. Finer batches: does the result hold, and how much data is left? ===
+Positive = starting with reproduction does better. 95% interval from resampling issues.
+          day: -3.49 pts  [-4.83, -2.18]  issues=1049 groups=1873 runs=13522  (23% of dated R/S runs usable)
+      6 hours: -3.60 pts  [-4.91, -2.28]  issues=1042 groups=2084 runs=11885  (20% of dated R/S runs usable)
+         hour: -3.74 pts  [-5.47, -2.01]  issues=808 groups=1802 runs=5342  (9% of dated R/S runs usable)
+ gap > 60 min: -3.98 pts  [-5.51, -2.44]  issues=938 groups=1934 runs=9485  (16% of dated R/S runs usable)
+ gap > 10 min: -2.76 pts  [-5.05, -0.36]  issues=571 groups=1108 runs=2866  (5% of dated R/S runs usable)
+
+=== 3. Chance check: shuffle R/S labels inside each group (1,000 times) ===
+          day: observed -3.49 pts, share of shuffles at least as extreme = 0.000
+         hour: observed -3.74 pts, share of shuffles at least as extreme = 0.000
+ gap > 10 min: observed -2.76 pts, share of shuffles at least as extreme = 0.017
+
+=== 4. Are versions still mixed within a day? (does the hour predict the first action?) ===
+groups=1739 runs=13166  hour-to-hour variation = 1.00x what chance gives, p = 0.452
+
+=== 5. Placebo: 'create reproduce.py' vs 'create reproduce_bug.py' (both are R; expect ~0) ===
+          day: -0.78 pts  [-2.29, +0.77]  issues=803 groups=1412 runs=11286
+         hour: -0.30 pts  [-2.60, +1.91]  issues=600 groups=1416 runs=4334
+
+=== 6. Runs with no evaluation log: add them back under different assumptions ===
+batches by day (9578 R/S runs without a log):
+   left out (main analysis)                                -3.49 pts
+   added back, like other failures (median of 200 draws)   -3.08 pts
+   added back, worst case for the finding                  -1.36 pts
+   added back, best case for the finding                   -5.39 pts
+batches by hour (9578 R/S runs without a log):
+   left out (main analysis)                                -3.74 pts
+   added back, like other failures (median of 200 draws)   -3.25 pts
+   added back, worst case for the finding                  +0.64 pts
+   added back, best case for the finding                   -9.66 pts
+
+=== 7. Label check: do the arms mean what we think? ===
+R: most common first commands: {'create reproduce.py': 23555, 'create reproduce_bug.py': 5466, 'create reproduce.sh': 569, 'create reproduce.sql': 517, 'create reproduce_issue.py': 200}
+R: share that run the reproduction script within the first 5 commands: 83.1%
+S: share that create a reproduction script later: 3.9% (median step 4); never: 96.1%
+S: most common first command types: {'search_dir': 16031, 'find_file': 11041, 'ls': 7338, 'grep': 703, 'search_file': 107}
+R: creates any file after step 1: 18.2%; runs a script of any kind: 91.7%; runs the project's test suite: 2.0%
+S: creates any file after step 1: 40.4%; runs a script of any kind: 42.1%; runs the project's test suite: 7.3%
+
+=== 8. First look at why (exploratory; same R vs S comparison, other outcomes) ===
+within issue x day (dated runs):
+   submitted because context ran out: +10.97 pts  [+9.16, +12.73]  issues=1049 groups=1873 runs=13522
+   number of commands: +9.99 cmds  [+8.76, +11.29]  issues=1049 groups=1873 runs=13522
+within issue, all runs (versions not separated):
+   resolved: -3.68 pts  [-4.68, -2.75]  issues=1349 groups=1349 runs=29020
+   ended with no patch: -0.14 pts  [-1.67, +1.37]  issues=1349 groups=1349 runs=29020
+   ran out of context (any exit): +5.82 pts  [+4.16, +7.39]  issues=1349 groups=1349 runs=29020

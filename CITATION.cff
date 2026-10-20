@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "Do Tips for AI Coding Agents Help? Fair Comparisons from Logged Agent Runs"
+authors:
+  - family-names: Yadav
+    given-names: Rajan
+    email: rajanyadav0307@gmail.com
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/rajanyadav0307/tips_agentic_ai"
+keywords:
+  - coding agents
+  - natural experiments
+  - causal inference
+  - SWE-bench
+  - data science
