@@ -26,6 +26,22 @@
 
 ::: agent_tips.features.report
 
+::: agent_tips.models.estimators
+
+::: agent_tips.models.regression
+
+::: agent_tips.models.survival
+
+::: agent_tips.models.forks
+
+::: agent_tips.models.analysis
+
+::: agent_tips.models.report
+
+::: agent_tips.evaluation.robustness
+
+::: agent_tips.evaluation.report
+
 ::: agent_tips.utils.device
 
 ::: agent_tips.utils.seed

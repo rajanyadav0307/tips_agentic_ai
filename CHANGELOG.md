@@ -4,15 +4,14 @@
 
 ### Added
 
+- Phase D:
+  - `agent-tips model`: fair (within-group) estimator with issue-cluster bootstrap and permutation test, fixed-effects regression with clustered errors, interactions, survival analysis, exact-history fork pairs, simple-vs-fair gaps, design checks, Benjamini–Hochberg; generated `docs/06_results.md`;
+  - `agent-tips evaluate`: robustness checks (batch definitions, undated tries, leave one AI out, label errors, NVIDIA's removed tries, conditional logistic regression) and a two-run reproducibility check; generated `docs/07_evaluation.md`.
+
 - Phase C:
   - `agent-tips features`: a shared action labeler (SQL), try features (arms, counts, localization) and issue features;
   - label validation: observation check, plus a blind second labeling in two rounds (`docs/data/label_validation/`);
   - generated `docs/05_feature_report.md` with the tip-compliance chart.
-
-### Fixed
-
-- File names inside `/testbed` no longer count as test scripts. The exploratory code had this bug.
-- Test-tool names inside paths no longer count as test-suite runs.
 
 - Phase B:
   - `agent-tips clean` (shared `tries`/`steps` tables, flags, version batches, funnel, generated `docs/03_cleaning_report.md`);
@@ -35,3 +34,9 @@
   - GitHub Actions CI matrix (Linux x86_64 and ARM64, Windows x86_64, macOS ARM64).
 - MIT license and `CITATION.cff`.
 - Research documents in `docs/project/`. Exploratory scripts and their results in `analysis/exploratory/`.
+
+### Fixed
+
+- Analysis rows now load in a fixed order, so random draws (and results) are identical across runs.
+- File names inside `/testbed` no longer count as test scripts. The exploratory code had this bug.
+- Test-tool names inside paths no longer count as test-suite runs.

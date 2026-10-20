@@ -44,3 +44,16 @@ def test_cohen_kappa() -> None:
     a = pd.Series(["x", "x", "y", "y"])
     assert cohen_kappa(a, a) == 1.0
     assert cohen_kappa(a, pd.Series(["y", "y", "x", "x"])) == -1.0
+
+
+def test_analysis_runs_on_fixtures(featured: Config) -> None:
+    import warnings
+
+    from agent_tips.models import analysis
+
+    featured.raw["analysis"].update({"bootstrap_reps": 50, "permutation_reps": 20})
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        summary = analysis.run(featured, log=lambda _: None)
+    assert (featured.path("results") / "estimates.parquet").is_file()
+    assert set(summary["decisions"]) == {"P1", "P2", "P3"}

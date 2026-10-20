@@ -58,8 +58,8 @@
 | 3 Clean | ✅ Done (Phase B) | `agent-tips clean`: 402,043 tries and 26.5M steps in one shared format; funnels match the exploration exactly; `docs/03_cleaning_report.md` |
 | 4 EDA | ✅ Done (Phase B) | `agent-tips eda`: 7 charts plus `docs/04_eda_report.md` |
 | 5 Features | ✅ Done (Phase C) | Shared labeler (151 tests); observation check; blind second labeling in 2 rounds (κ 0.90, then 0.86 on a fresh sample); issue and localization features; `docs/05_feature_report.md` |
-| 6 Model | ⚠️ Exploratory only | Same-bug comparisons, bootstrap and permutation exist; no regression models or FDR |
-| 7 Evaluate | ⚠️ Partial | Robustness checks exist for the older AI only |
+| 6 Model | ✅ Done (Phase D) | `agent-tips model`: 95 result rows (P1 −3.5 pts harm; P2 +0.1, equivalent within ±2; P3 mean gap 10.9 pts); FE regression, survival, forks, BH; `docs/06_results.md` |
+| 7 Evaluate | ✅ Done (Phase D) | `agent-tips evaluate`: batch definitions, undated tries, leave one AI out, label errors, NVIDIA tipping point with calibration, conditional logit; two runs identical; `docs/07_evaluation.md` |
 | 8 Communicate | ❌ Missing | — |
 
 ## 3. Decisions (defaults chosen by the assistant)
@@ -347,7 +347,12 @@ The label-validation sample (C2) is saved as an easy-to-read spreadsheet, so the
 - **Depends on:** D5.
 - **Effort:** 1 h, plus about 1–2 h of machine time.
 
-**Checkpoint D:** all research questions answered with final numbers, and robustness done; plain-words summary to the owner.
+**Checkpoint D:** all research questions answered with final numbers, and robustness done; plain-words summary to the owner. ✅ **Completed 2026-10-20**; awaiting the owner's review. Changes made during the phase:
+
+- Analysis rows are loaded in a fixed order; before this, the permutation p-values changed slightly between runs.
+- The label-error check moves the tries a missed test script could actually affect, rather than applying a single correction factor (a missed script only matters if the try has no other test script before the fix).
+- NVIDIA's tipping point is checked against Nebius's unfiltered newer-AI data.
+- Reproducibility is checked with `agent-tips evaluate` (two full model runs); `run-all` comes in Phase E.
 
 ---
 

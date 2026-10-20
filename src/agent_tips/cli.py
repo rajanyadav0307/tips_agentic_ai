@@ -17,8 +17,6 @@ from agent_tips.utils.device import select_device, torch_available
 
 # Steps not built yet: subcommand -> (procedure step, plan phase that implements it)
 PENDING: dict[str, tuple[str, str]] = {
-    "model": ("Step 6: model and analyze", "D"),
-    "evaluate": ("Step 7: evaluate", "D"),
     "figures": ("Step 8: communicate", "E"),
     "run-all": ("Steps 2-8 in order", "E"),
 }
@@ -68,6 +66,24 @@ def _features(_: argparse.Namespace) -> int:
     return 0
 
 
+def _model(_: argparse.Namespace) -> int:
+    from agent_tips.models import analysis, report
+
+    cfg = load_config()
+    analysis.run(cfg)
+    print(f"report: {report.build(cfg)}")
+    return 0
+
+
+def _evaluate(args: argparse.Namespace) -> int:
+    from agent_tips.evaluation import report, robustness
+
+    cfg = load_config()
+    robustness.run(cfg, repro=not args.no_repro)
+    print(f"report: {report.build(cfg)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(prog="agent-tips", description=__doc__)
@@ -81,6 +97,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("clean", help="Step 3: build clean tries/steps tables and the cleaning report")
     sub.add_parser("eda", help="Step 4: exploration charts and their numbers")
     sub.add_parser("features", help="Step 5: labels, label validation, issue and try features")
+    sub.add_parser("model", help="Step 6: fair comparisons, regressions, survival, forks")
+    ev = sub.add_parser("evaluate", help="Step 7: robustness checks and reproducibility")
+    ev.add_argument(
+        "--no-repro", action="store_true", help="skip the two-run reproducibility check"
+    )
     for name, (step, _) in PENDING.items():
         sub.add_parser(name, help=step)
     return parser
@@ -99,6 +120,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _eda(args)
     if args.command == "features":
         return _features(args)
+    if args.command == "model":
+        return _model(args)
+    if args.command == "evaluate":
+        return _evaluate(args)
     step, phase = PENDING[args.command]
     print(f"'{args.command}' ({step}) is not implemented yet; it is added in phase {phase}.")
     return 2

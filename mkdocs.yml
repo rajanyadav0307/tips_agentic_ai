@@ -10,6 +10,8 @@ nav:
       - 3. Cleaning report: 03_cleaning_report.md
       - 4. Exploration (EDA): 04_eda_report.md
       - 5. Features and label validation: 05_feature_report.md
+      - 6. Results: 06_results.md
+      - 7. Evaluation (robustness): 07_evaluation.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md
