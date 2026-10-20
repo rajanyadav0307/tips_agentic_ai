@@ -5,7 +5,7 @@
 **Rules:**
 - All work follows the locked 8-step data science procedure, in order.
 - All code follows the locked engineering standards.
-- All work is done by the assistant alone. No manual effort is needed from the project owner.
+- **The assistant does all the work. The project owner reviews and checks it** at the end of each phase, and the next phase starts only after the owner approves.
 
 ## In plain words
 
@@ -21,7 +21,7 @@
   - 8 figures and 4 tables;
   - a full paper draft;
   - a tagged release on GitHub that reproduces everything with one command.
-- **How you follow along:** at the end of each phase, I give you a plain-words summary of what was done and what was found.
+- **Who does what:** I do all the work. You review it. At the end of each phase, I give you a plain-words summary and a short **"what to check"** list (which files to open, which numbers to look at). I start the next phase only after you approve.
 
 ## Contents
 
@@ -68,7 +68,7 @@ These were open questions. Defaults are now set so work never waits. Any of them
 
 | Decision | Default | Reason |
 | --- | --- | --- |
-| Label check | Automatic: (a) checking each action against the computer's reply, plus (b) blind second labeling by the assistant on 600 sampled actions. Reported in the paper as AI-assisted, not human, validation. | Owner asked for no human effort |
+| Label check | Automatic: (a) checking each action against the computer's reply, plus (b) blind second labeling by the assistant on 600 sampled actions. Reported in the paper as AI-assisted, not human, validation. | The assistant does the work; the owner reviews it (and can inspect the sample spreadsheet) |
 | Paper format | ACM `acmart` two-column, about 10 pages plus references | Fits MSR, ESEM and FSE-style venues and most workshops; easy to convert |
 | Target venue | Kept open; the draft is written to be venue-neutral | Deadlines are not verified; choose when the draft is ready |
 | Paid experiment with closed AIs | Not included | Needs money and accounts, and isn't needed for the story |
@@ -79,7 +79,12 @@ These were open questions. Defaults are now set so work never waits. Any of them
 
 Each task lists: **What**, **Inputs**, **Outputs** (code module and files), **Done when**, **Depends on**, and **Effort** (assistant working time, plus machine time where it matters).
 
-Every phase ends with a plain-words checkpoint summary for the owner and a commit pushed from the owner's GitHub account.
+Every phase ends with a checkpoint:
+1. the work is pushed to GitHub from the owner's account;
+2. the assistant gives a plain-words summary and a "what to check" list;
+3. **the owner reviews and approves** before the next phase starts.
+
+The label-validation sample (C2) is saved as an easy-to-read spreadsheet, so the owner can check any labels they like.
 
 ---
 
