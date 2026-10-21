@@ -96,7 +96,7 @@ strict = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["duckdb.*", "statsmodels.*", "scipy.*", "torch.*", "sklearn.*", "sentence_transformers.*"]
+module = ["duckdb.*", "statsmodels.*", "scipy.*", "torch.*", "sklearn.*", "sentence_transformers.*", "threadpoolctl.*", "joblib.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

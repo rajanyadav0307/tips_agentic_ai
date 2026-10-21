@@ -43,28 +43,60 @@ EMBEDDING_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"  # Hub commit, c
 # ---------------------------------------------------------------- rung 2 (used in Step 6)
 
 
+_ANALYZER = TfidfVectorizer(ngram_range=(1, 2)).build_analyzer()
+
+
+def tokenize(texts: pd.Series) -> list[list[str]]:
+    """Split each text into the words and word pairs the text model uses (done once, reused)."""
+    return [_ANALYZER(t) for t in texts.fillna("")]
+
+
+def _as_is(tokens: list[str]) -> list[str]:
+    return tokens
+
+
 class TextFeatures:
     """Report text → 100 numbers: TF-IDF (1–2-grams) then truncated SVD.
 
-    Settings are frozen in Step 1. Fit on training-fold reports only.
+    Settings are frozen in Step 1. Fit on training-fold reports only. With
+    ``pretokenized=True`` it takes the output of :func:`tokenize` instead of raw
+    text; the result is identical, but the slow word-splitting is done once.
     """
 
-    def __init__(self, dims: int = 100, seed: int = 0) -> None:
-        self.tfidf = TfidfVectorizer(
-            ngram_range=(1, 2), min_df=3, max_features=50_000, sublinear_tf=True
+    def __init__(self, dims: int = 100, seed: int = 0, pretokenized: bool = False) -> None:
+        settings = {"min_df": 3, "max_features": 50_000, "sublinear_tf": True}
+        self.tfidf = (
+            TfidfVectorizer(analyzer=_as_is, **settings)
+            if pretokenized
+            else TfidfVectorizer(ngram_range=(1, 2), **settings)
         )
+        self.pretokenized = pretokenized
         self.svd = TruncatedSVD(n_components=dims, random_state=seed)
 
-    def fit(self, texts: pd.Series) -> TextFeatures:
+    def _input(self, texts: pd.Series | list[list[str]]) -> pd.Series | list[list[str]]:
+        return texts if self.pretokenized else pd.Series(texts).fillna("")
+
+    def fit(self, texts: pd.Series | list[list[str]]) -> TextFeatures:
         """Learn the vocabulary and the 100 directions from training texts."""
-        x = self.tfidf.fit_transform(texts.fillna(""))
-        self.svd.n_components = min(self.svd.n_components, max(1, x.shape[1] - 1))
-        self.svd.fit(x)
+        try:
+            x = self.tfidf.fit_transform(self._input(texts))
+        except ValueError:  # no word appears in 3 or more reports
+            self.empty = True
+            return self
+        self.empty = False
+        self.reduce = x.shape[1] > 1  # SVD needs at least two words
+        if self.reduce:
+            self.svd.n_components = min(self.svd.n_components, x.shape[1] - 1)
+            self.svd.fit(x)
         return self
 
-    def transform(self, texts: pd.Series) -> np.ndarray:
+    def transform(self, texts: pd.Series | list[list[str]]) -> np.ndarray:
         """Turn texts into numbers with the learned vocabulary and directions."""
-        return np.asarray(self.svd.transform(self.tfidf.transform(texts.fillna(""))))
+        n = len(texts)
+        if self.empty:
+            return np.zeros((n, 1))
+        x = self.tfidf.transform(self._input(texts))
+        return np.asarray(self.svd.transform(x) if self.reduce else x.toarray())
 
 
 # ---------------------------------------------------------------- rung 1 and 4

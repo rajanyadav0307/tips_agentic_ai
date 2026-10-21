@@ -125,6 +125,14 @@ def _onetry(args: argparse.Namespace) -> int:
         from agent_tips.onetry import features
 
         print(f"report: {features.run(cfg, with_embeddings=args.embeddings)}")
+    elif args.step == "model":
+        from agent_tips.onetry import model
+
+        print(f"report: {model.run(cfg)}")
+    elif args.step == "evaluate":
+        from agent_tips.onetry import evaluate
+
+        print(f"report: {evaluate.run(cfg, fresh=args.fresh)}")
     return 0
 
 
@@ -150,14 +158,16 @@ def build_parser() -> argparse.ArgumentParser:
     ot = sub.add_parser("onetry", help="Paper 2 (one-try study): run one step of its procedure")
     ot.add_argument(
         "step",
-        choices=["collect", "clean", "eda", "features"],
+        choices=["collect", "clean", "eda", "features", "model", "evaluate"],
         help="collect: verify sources and extract (Step 2); clean: cleaning rules (Step 3); "
-        "eda: exploration and comparison inventory (Step 4); features: Step 5",
+        "eda: exploration and comparison inventory (Step 4); features: Step 5; "
+        "model: answer keys and go/no-go (Step 6); evaluate: full run and tests (Step 7)",
     )
     ot.add_argument("--quick", action="store_true", help="collect: check sizes, skip re-hashing")
     ot.add_argument(
         "--embeddings", action="store_true", help="features: also compute rung-3 embeddings (GPU)"
     )
+    ot.add_argument("--fresh", action="store_true", help="evaluate: redo comparisons already done")
     ra = sub.add_parser("run-all", help="Steps 2-8 in order (download through figures)")
     ra.add_argument("--no-repro", action="store_true", help="skip the reproducibility check")
     ra.set_defaults(only=None, verify=False, dry_run=False)

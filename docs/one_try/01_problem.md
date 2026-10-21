@@ -153,4 +153,33 @@ The novelty check is repeated before writing (Step 8).
 
 ## Amendments
 
-*None yet.*
+**A1–A6 (2026-10-21, before any modelling run). Reason for all: computing time.**
+
+Timing on the largest comparison (5,514 bugs), per draw: about 30 s for the text model, 13 s per DML rung, and about 50 s for *each* random-forest fit (10 per rung). The frozen design would take well over a day on the study laptop. None of these changes affect a hypothesis test: H1–H4 use rungs 0, 1, 2 and 5, which keep all 20 draws (40 for the precision check).
+
+- **A1. Checks get 5 draws.**
+  - The random-forest check runs on rung 5 only (the rung H3 judges).
+  - The AIPW check runs on rungs 2, 4 and 5.
+  - The exploratory rung 3 is included.
+
+  All of them use draws 0–4 instead of 0–19. They are reported, never used for decisions.
+- **A2. Secondary "all bugs" copies get 3 draws:** rungs 0, 2 and 5, draws 0–2.
+- **A3. Reproducibility:** instead of a second full run, three comparisons chosen at random (seed 0) are re-run completely, and every result row must match exactly. Every unit of work has a fixed seed, so this checks determinism without doubling the computing time.
+- **A4. Precision check:** done on rungs 0 and 5 (draws 20–39), the rungs that carry H1 and H3.
+- **A5. Text-dimension robustness (50 / 200 dimensions) is dropped.** The language-model embeddings (rung 3) already give an alternative text representation.
+- **A6. Implementation (numbers unchanged):**
+  - report text is split into words once per comparison and reused across folds (tested to give identical numbers);
+  - comparisons run in parallel (5 workers × 2 threads);
+  - random-forest `n_jobs` = 2.
+
+**A7 (2026-10-21, after Step 6, before any Step 7 run). The "all bugs" secondary analysis is strengthened.**
+- **What prompted it:** in the Step 6 go/no-go, the simple comparison's error on the pilot's comparisons was 2.4 points, against about 18 in the pilot. The reason is that the primary copies draw only from key bugs (bugs where both choices occur). Most of the easy-bug trap comes from bugs where the AI *always* or *never* makes a choice, and a real one-try study cannot leave those out: it cannot know which bugs are key bugs without many tries.
+- **Change:**
+  - the secondary analysis (copies drawn from all bugs) now uses draws 0–4 (5 draws) and rungs 0, 1, 2 and 5 (replacing A2);
+  - it is reported next to the primary analysis, with the same scores.
+- **Unchanged:**
+  - H1–H4 and their decision rules (primary, key bugs);
+  - the answer keys.
+- **Caveat reported with it:** the answer key is defined on key bugs only, so for the all-bugs copies part of the "error" can come from the two groups of bugs having different true effects.
+- **Margin check (Step 6):** the median noise floor of the answer keys is 1.7 points, so the ±2-point margin is *not* at least twice the noise floor. As frozen in §7, this is reported and the margin stays.
+

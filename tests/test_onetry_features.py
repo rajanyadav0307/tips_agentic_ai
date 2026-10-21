@@ -72,3 +72,24 @@ def test_features_step_end_to_end(big_project: Config) -> None:
     text = report.read_text(encoding="utf-8")
     assert text.startswith("# Step 5: Feature Engineering")
     assert "**Leak checks:** all passed." in text
+
+
+def test_pretokenized_text_model_gives_identical_numbers() -> None:
+    rng = np.random.default_rng(0)
+    words = [f"w{i}" for i in range(40)]
+    texts = pd.Series(
+        [" ".join(rng.choice(words, 30)) + " Error: Parser_X failed" for _ in range(80)]
+    )
+    train, test = texts.iloc[:60], texts.iloc[60:]
+    plain = features.TextFeatures(dims=8).fit(train)
+    toks = features.tokenize(texts)
+    cached = features.TextFeatures(dims=8, pretokenized=True).fit(toks[:60])
+    assert plain.tfidf.vocabulary_ == cached.tfidf.vocabulary_
+    np.testing.assert_allclose(plain.transform(test), cached.transform(toks[60:]), atol=1e-10)
+
+
+def test_text_features_survive_tiny_vocabularies() -> None:
+    same = pd.Series(["issue"] * 10)
+    assert features.TextFeatures().fit(same).transform(same).shape == (10, 1)
+    rare = pd.Series([f"unique{i}" for i in range(10)])  # no word in 3+ reports
+    assert features.TextFeatures().fit(rare).transform(rare).shape == (10, 1)

@@ -47,6 +47,13 @@ analysis:
   bootstrap_reps: 2000
   memory_limit: 8GB    # DuckDB memory cap; larger jobs spill to disk
   threads: 4           # fewer threads = less memory per raw-data scan
+  # Step 7 full run (01_problem.md and amendments A1-A6)
+  precision_draws: 40  # draws 20-39: rungs 0 and 5 only (precision check)
+  check_draws: 5       # checks and rung 3 (A1)
+  secondary_draws: 5   # copies drawn from all bugs (A7, replacing A2)
+  jobs: 5              # comparisons run in parallel
+  h4_ks: [1, 2, 4]     # other setups used in H4b
+  k_tries: [2, 3, 5, 10]  # RQ4
   permutation_reps: 1000
   fdr_q: 0.05
   equivalence_margin: 0.02   # ±2 points, used to claim "no meaningful difference"
@@ -64,3 +71,10 @@ onetry:
   bootstrap_reps: 2000
   memory_limit: 8GB    # DuckDB memory cap; larger jobs spill to disk
   threads: 4           # fewer threads = less memory per raw-data scan
+  # Step 7 full run (01_problem.md and amendments A1-A6)
+  precision_draws: 40  # draws 20-39: rungs 0 and 5 only (precision check)
+  check_draws: 5       # checks and rung 3 (A1)
+  secondary_draws: 5   # copies drawn from all bugs (A7, replacing A2)
+  jobs: 5              # comparisons run in parallel
+  h4_ks: [1, 2, 4]     # other setups used in H4b
+  k_tries: [2, 3, 5, 10]  # RQ4
