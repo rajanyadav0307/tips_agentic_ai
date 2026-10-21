@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 
 from agent_tips.onetry import corrections as cr
+from agent_tips.onetry import simulate as sm
 from agent_tips.onetry.comparisons import Comparison
 from agent_tips.onetry.simulate import answer_key, k_try_answer, k_try_copy, one_try_copy
 
@@ -152,3 +153,62 @@ def test_k_try_copies_keep_k_tries_per_bug() -> None:
     assert np.isfinite(k_try_answer(c, d))
     # same draw, same copy (reproducible)
     pd.testing.assert_frame_equal(d, k_try_copy(c, tries, k=3, draw=0))
+
+
+# ---------------------------------------------------------------- amendment A8
+
+
+def test_leftover_form_reproduces_rungs_0_and_1(null_case: pd.DataFrame) -> None:
+    for parts, fn in ((cr.simple_parts, cr.simple), (cr.linear_parts, cr.linear)):
+        ry, rt = parts(null_case)
+        assert cr.partial_out(ry, rt).estimate == pytest.approx(fn(null_case).estimate, abs=1e-10)
+
+
+def test_cached_text_columns_replace_the_fold_text_model(null_case: pd.DataFrame) -> None:
+    d = null_case.head(400).copy()
+    rng = np.random.default_rng(0)
+    for i in range(5):
+        d[f"txt_{i}"] = rng.normal(size=len(d))
+    assert cr.has_cached_text(d) and not cr.has_cached_text(null_case)
+    r = cr.dml(d, 5, seed=0)
+    assert np.isfinite(r.estimate) and r.se > 0
+
+
+def test_aligned_keys_weight_bugs_as_the_methods_do() -> None:
+    tries = _many_tries(1500, 6, 0.08, seed=6)
+    c = Comparison("s|x", "d", "s", "a vs b", "choice", "a", "b", experiment=True)
+    frozen = answer_key(c, tries, reps=100)
+    assert sm.aligned_key(c, tries, "cmh", reps=100)[0] == pytest.approx(frozen.estimate)
+    for w in ("dml", "ate"):
+        est, lo, hi = sm.aligned_key(c, tries, w, reps=200)
+        assert lo < 0.08 < hi  # one true effect: every weighting finds it
+    # with 6 tries per bug the dml weights are the cmh weights divided by 6
+    kp, kd = sm.key_parts(c, tries, "cmh"), sm.key_parts(c, tries, "dml")
+    np.testing.assert_allclose(kd.den.to_numpy() * 6, kp.den.to_numpy())
+
+
+def test_own_rate_leaves_the_drawn_try_out() -> None:
+    tries = pd.DataFrame(
+        {
+            "bug_id": ["b1"] * 3 + ["b2"],
+            "try_id": ["t1", "t2", "t3", "t4"],
+            "setup": "s",
+            "y": [1.0, 0.0, 0.0, 1.0],
+        }
+    )
+    c = Comparison("s|x", "d", "s", "a vs b", "choice", "a", "b", experiment=True)
+    copy = pd.DataFrame({"bug_id": ["b1", "b2"], "try_id": ["t1", "t4"], "y": [1.0, 1.0]})
+    o = sm.own_loo(c, tries, copy).set_index("bug_id")
+    assert o.loc["b1", "own_rate"] == 0.0 and o.loc["b1", "n_own"] == 2
+    assert o.loc["b2", "own_missing"] == 1.0 and o.loc["b2", "own_rate"] == -1.0
+
+
+def test_realistic_other_ai_uses_one_try_per_setup() -> None:
+    rows = [("b1", f"o{j}", "other1", float(j % 2)) for j in range(10)]
+    rows += [("b1", f"p{j}", "other2", 1.0) for j in range(3)]
+    rows += [("b1", "s0", "s", 0.0)]
+    tries = pd.DataFrame(rows, columns=["bug_id", "try_id", "setup", "y"])
+    c = Comparison("s|x", "d", "s", "a vs b", "choice", "a", "b", experiment=True)
+    r = sm.realistic_other(c, tries, pd.Index(["b1"], name="bug_id"), draw=0).iloc[0]
+    assert r.n_other == 2
+    assert r.other_rate in (0.5, 1.0)  # (0 or 1 from other1 + 1 from other2) / 2

@@ -14,9 +14,10 @@ Outputs in ``data/onetry/features/``:
 - ``embeddings.parquet`` (optional, ``--embeddings``): sentence embeddings of
   each bug report (rung 3, exploratory).
 
-The report text itself (rung 2) is turned into numbers *inside each training
-fold* during modelling, with :class:`TextFeatures`, so held-out bugs never
-shape the text model.
+The report text itself (rung 2) was turned into numbers *inside each training
+fold* during modelling, with :class:`TextFeatures`. From amendment A9 the Step 7
+run uses :func:`text_table` instead: one text model per dataset, fitted on
+report text only (no outcomes), cached in ``text_svd.parquet``.
 """
 
 from __future__ import annotations
@@ -97,6 +98,24 @@ class TextFeatures:
             return np.zeros((n, 1))
         x = self.tfidf.transform(self._input(texts))
         return np.asarray(self.svd.transform(x) if self.reduce else x.toarray())
+
+
+def text_table(reports: pd.DataFrame, dims: int = 100, seed: int = 0) -> pd.DataFrame:
+    """Return cached report-text numbers (amendment A9): one text model per dataset.
+
+    Fitted on all of a dataset's bug reports at once. It sees only the report
+    text, never an outcome or a choice, so it cannot leak the answer. Returns
+    ``dataset``, ``bug_id`` and ``txt_0`` … ``txt_{dims-1}``.
+    """
+    parts = []
+    for ds, g in reports.groupby("dataset", sort=True):
+        g = g.sort_values("bug_id")
+        tokens = tokenize(g.report)
+        tf = TextFeatures(dims=dims, seed=seed, pretokenized=True).fit(tokens)
+        x = tf.transform(tokens)
+        cols = {f"txt_{i}": x[:, i] for i in range(x.shape[1])}
+        parts.append(pd.DataFrame({"dataset": ds, "bug_id": g.bug_id.to_numpy(), **cols}))
+    return pd.concat(parts, ignore_index=True)
 
 
 # ---------------------------------------------------------------- rung 1 and 4

@@ -1,24 +1,35 @@
 """Step 7 (one-try study): the full run, the scores and the hypothesis tests.
 
-**Full run.** Every qualifying comparison is one unit of work, run in parallel
-and saved to ``outputs/onetry/units/<comparison>.parquet`` (so a stopped run
+**Full run.** One unit of work is one comparison × one draw (amendment A9), run
+in parallel with one thread each and saved to
+``outputs/onetry/units/<comparison>/<part>-<draw>.parquet`` (so a stopped run
 resumes). Per comparison (draw numbers per ``01_problem.md`` and amendments):
 
-- draws 0-19: rungs 0, 1, 2, 4, 5, 6 on one-try copies of the key bugs;
+- draws 0-19: rungs 0, 1, 2, 4, 5, 6 on one-try copies of the key bugs, plus
+  the realistic other-AI rung (``rung5_real``) and, for the many-tries
+  datasets, the oracle rung (``rung7``) (A8);
 - draws 20-39: rungs 0 and 5 (precision check, A4);
-- draws 0-4: rung 3, random-forest rung 5, AIPW rungs 2, 4, 5 (checks, A1);
+- draws 0-4: rung 3 and AIPW rungs 2, 4, 5 (checks, A1); draws 0-1: random-forest
+  rung 5 (A9);
 - NVIDIA, draws 0-19: rung 5 using only 1, 2 or 4 other setups (H4b);
-- draws 0-4: rungs 0, 1, 2, 5 on copies drawn from all bugs (secondary, A7);
+- draws 0-4: rungs 0, 1, 2, 5 and AIPW rung 5 on copies drawn from all bugs,
+  with and without trimming (secondary, A7 and A8);
 - older AI and Nebius, draws 0-19: the within-bug answer from k = 2, 3, 5, 10
   tries per bug (RQ4).
 
+For draws 0-19 (and the all-bugs copies) the per-bug leftovers of every rung are
+saved to ``outputs/onetry/leftovers/`` for the joint bootstrap and the model
+diagnostics (A8).
+
 **Scores and tests** follow ``01_problem.md`` §6-7: error = mean over draws of
 (estimate − answer key); averages over comparisons with CIs from bootstrap
-resamples of AI setups; H1-H4 with Holm correction.
+resamples of AI setups; H1-H4 with Holm correction. Amendment A8 adds the
+secondary scores in :mod:`agent_tips.onetry.extra`.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from collections.abc import Callable
@@ -41,10 +52,17 @@ from threadpoolctl import threadpool_limits  # noqa: E402
 from agent_tips.config import Config  # noqa: E402
 from agent_tips.eda.charts import COLORS  # noqa: E402
 from agent_tips.onetry import corrections as cr  # noqa: E402
-from agent_tips.onetry import data  # noqa: E402
+from agent_tips.onetry import data, extra  # noqa: E402
 from agent_tips.onetry.comparisons import NEBIUS, NVIDIA, OLDER  # noqa: E402
-from agent_tips.onetry.features import other_ai_rates, tokenize  # noqa: E402
-from agent_tips.onetry.simulate import k_try_answer, k_try_copy, one_try_copy, seed_for  # noqa: E402
+from agent_tips.onetry.features import other_ai_rates, text_table  # noqa: E402
+from agent_tips.onetry.simulate import (  # noqa: E402
+    k_try_answer,
+    k_try_copy,
+    one_try_copy,
+    own_loo,
+    realistic_other,
+    seed_for,
+)
 
 MAIN = ["rung0", "rung1", "rung2", "rung4", "rung5", "rung6"]
 LABELS = {
@@ -55,7 +73,12 @@ LABELS = {
     "rung4": "ML: + human-fix size",
     "rung5": "ML: + other AIs' results",
     "rung6": "ML: + IRT difficulty",
+    "rung5_real": "ML: + other AIs, one try each (realistic)",
+    "rung7": "ML: + the AI's own other tries (oracle)",
 }
+SECONDARY_RUNGS = ["rung3", "rung5_real", "rung7"]  # reported, not in H1-H4 (A8)
+TRIM = (0.1, 0.9)  # A8: all-bugs trimming on the out-of-fold chance of choice a
+MANY_TRIES = (OLDER, NEBIUS)  # datasets where the oracle rung is defined (A8)
 
 
 @dataclass(frozen=True)
@@ -65,10 +88,11 @@ class Params:
     draws: int = 20
     precision_draws: int = 40
     check_draws: int = 5
+    forest_draws: int = 2
     secondary_draws: int = 5
     folds: int = 5
-    threads: int = 2
-    jobs: int = 5
+    model_threads: int = 1
+    jobs: int = 8
     h4_ks: tuple[int, ...] = (1, 2, 4)
     k_tries: tuple[int, ...] = (2, 3, 5, 10)
     min_ktry_bugs: int = 30
@@ -96,118 +120,300 @@ def _study(cfg: Config) -> data.StudyData:
     return _STUDY[key]
 
 
-def run_unit(cfg: Config, cid: str, p: Params) -> pd.DataFrame:
-    """All estimates for one comparison (one row per draw × method)."""
+def prepare_text(cfg: Config, log: Callable[[str], None] = print) -> Path:
+    """Build the cached report-text numbers once (amendment A9)."""
+    path = data.text_path(cfg)
+    if not path.is_file():
+        log("report text: one text model per dataset (cached)")
+        reports = pd.read_parquet(
+            cfg.path("onetry_data") / "clean" / "bugs.parquet",
+            columns=["dataset", "bug_id", "report"],
+        )
+        text_table(reports.assign(report=reports.report.fillna(""))).to_parquet(path, index=False)
+        _STUDY.clear()
+    return path
+
+
+class _Out:
+    """Collects estimates and per-bug leftovers of one unit."""
+
+    def __init__(self, cid: str, part: str, draw: int) -> None:
+        self.cid, self.part, self.draw = cid, part, draw
+        self.rows: list[dict[str, Any]] = []
+        self.left: list[pd.DataFrame] = []
+
+    def add(self, method: str, r: cr.Result, n: int, draw: int | None = None) -> None:
+        self.rows.append(
+            {
+                "cid": self.cid,
+                "draw": self.draw if draw is None else draw,
+                "method": method,
+                "estimate": r.estimate,
+                "se": r.se,
+                "n": n,
+            }
+        )
+
+    def keep(self, method: str, bugs: pd.Series, ry: np.ndarray, rt: np.ndarray) -> None:
+        self.left.append(
+            pd.DataFrame(
+                {
+                    "draw": np.int16(self.draw),
+                    "method": method,
+                    "bug_id": bugs.to_numpy(),
+                    "ry": ry.astype(np.float32),
+                    "rt": rt.astype(np.float32),
+                }
+            )
+        )
+
+    def frames(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+        return pd.DataFrame(self.rows), (
+            pd.concat(self.left, ignore_index=True) if self.left else None
+        )
+
+
+def _key_draw(s: data.StudyData, c: Any, draw: int, p: Params, out: _Out) -> None:
+    """One draw of one-try copies of the key bugs: every rung due at this draw."""
+    main, check, forest = draw < p.draws, draw < p.check_draws, draw < p.forest_draws
+    has_emb = s.embeddings is not None
+    copy = one_try_copy(c, s.tries, draw)
+    d = data.with_features(copy, c, s, embeddings=check and has_emb, text=True)
+    n, bugs = len(d), d.bug_id
+    folds = cr.make_folds(n, p.folds, draw)
+
+    def ladder_rung(name: str, frame: pd.DataFrame, rung: int, learner: str = "gbm") -> None:
+        ry, rt = cr.dml_parts(frame, rung, draw, learner=learner, folds=folds)
+        out.add(name, cr.partial_out(ry, rt), n)
+        if main and learner == "gbm":
+            out.keep(name, bugs, ry, rt)
+
+    out.add("rung0", cr.simple(d), n)
+    if main:
+        out.keep("rung0", bugs, *cr.simple_parts(d))
+        out.add("rung1", cr.linear(d), n)
+        out.keep("rung1", bugs, *cr.linear_parts(d))
+    for r in (2, 4, 5, 6) if main else (5,):
+        ladder_rung(f"rung{r}", d, r)
+    if not main:
+        return
+    idx = pd.Index(bugs, name="bug_id")
+    real = d.drop(columns=cr.OTHER).merge(realistic_other(c, s.tries, idx, draw), on="bug_id")
+    ladder_rung("rung5_real", real, 5)
+    if c.dataset in MANY_TRIES:
+        ladder_rung("rung7", d.merge(own_loo(c, s.tries, copy), on="bug_id"), 7)
+    if check:
+        if has_emb:
+            ladder_rung("rung3", d, 3)
+        for r in (2, 4, 5):
+            psi, _ = cr.aipw_parts(d, r, draw, folds=folds)
+            out.add(f"rung{r}_aipw", cr.mean_result(psi), n)
+            out.keep(f"rung{r}_aipw", bugs, psi, np.ones(n))
+    if forest:
+        ladder_rung("rung5_forest", d, 5, learner="forest")
+    if c.dataset == NVIDIA:
+        others = sorted(
+            s.tries.loc[(s.tries.setup != c.setup) & s.tries.bug_id.isin(idx), "setup"].unique()
+        )
+        for k in p.h4_ks:
+            if k >= len(others):
+                continue
+            rng = np.random.default_rng(seed_for(c.cid, draw, 50 + k))
+            chosen = set(rng.choice(others, size=k, replace=False))
+            oa = other_ai_rates(s.tries[s.tries.setup.isin(chosen)], c.setup, idx).reset_index()
+            ladder_rung(f"rung5_k{k}", d.drop(columns=cr.OTHER).merge(oa, on="bug_id"), 5)
+
+
+def _all_draw(s: data.StudyData, c: Any, draw: int, p: Params, out: _Out) -> None:
+    """One draw of one-try copies of all bugs (A7), with the trimmed versions (A8)."""
+    d = data.with_features(one_try_copy(c, s.tries, draw, key_only=False), c, s, text=True)
+    n, bugs = len(d), d.bug_id
+    folds = cr.make_folds(n, p.folds, draw)
+    out.add("rung0_allbugs", cr.simple(d), n)
+    out.add("rung1_allbugs", cr.linear(d), n)
+    for r in (2, 5):
+        ry, rt = cr.dml_parts(d, r, draw, folds=folds)
+        out.add(f"rung{r}_allbugs", cr.partial_out(ry, rt), n)
+        out.keep(f"rung{r}_allbugs", bugs, ry, rt)
+    psi, prop = cr.aipw_parts(d, 5, draw, folds=folds)
+    out.add("rung5_aipw_allbugs", cr.mean_result(psi), n)
+    if np.isfinite(prop).all():
+        keep = (prop >= TRIM[0]) & (prop <= TRIM[1])
+        dk = d[keep].reset_index(drop=True)
+        ok = int(keep.sum()) > 10 and dk.t.nunique() == 2
+        nan = cr.Result(float("nan"), float("nan"))
+        out.add("rung0_allbugs_trim", cr.simple(dk) if ok else nan, int(keep.sum()))
+        out.add("rung1_allbugs_trim", cr.linear(dk) if ok else nan, int(keep.sum()))
+        out.add("rung5_aipw_allbugs_trim", cr.mean_result(psi[keep]), int(keep.sum()))
+
+
+def _ktry(s: data.StudyData, c: Any, p: Params, out: _Out) -> None:
+    """RQ4: the within-bug answer from k tries per bug (many-tries datasets)."""
+    for k in p.k_tries:
+        for draw in range(p.draws):
+            kd = k_try_copy(c, s.tries, k, draw)
+            if kd.bug_id.nunique() >= p.min_ktry_bugs:
+                r = cr.Result(k_try_answer(c, kd), float("nan"))
+                out.add(f"ktry{k}", r, int(kd.bug_id.nunique()), draw=draw)
+
+
+def run_task(
+    cfg: Config, cid: str, part: str, draw: int, p: Params
+) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+    """One unit of work: estimates and leftovers of one comparison × part × draw."""
     s = _study(cfg)
     c = next(x for x in s.comparisons if x.cid == cid)
-    rows: list[dict[str, Any]] = []
+    out = _Out(cid, part, draw)
+    with threadpool_limits(p.model_threads):
+        if part == "key":
+            _key_draw(s, c, draw, p, out)
+        elif part == "all":
+            _all_draw(s, c, draw, p, out)
+        else:
+            _ktry(s, c, p, out)
+    return out.frames()
 
-    def add(draw: int, method: str, r: cr.Result) -> None:
-        rows.append(
-            {"cid": cid, "draw": draw, "method": method, "estimate": r.estimate, "se": r.se}
-        )
 
-    has_emb = s.embeddings is not None
-    with threadpool_limits(p.threads):
-        first = data.with_features(one_try_copy(c, s.tries, 0), c, s)
-        tokens = tokenize(first.report)
-        bugs = pd.Index(first.bug_id)
-        others = sorted(
-            s.tries.loc[(s.tries.setup != c.setup) & s.tries.bug_id.isin(bugs), "setup"].unique()
-        )
-        for draw in range(p.precision_draws):
-            main, check = draw < p.draws, draw < p.check_draws
-            d = data.with_features(
-                one_try_copy(c, s.tries, draw), c, s, embeddings=check and has_emb
-            )
-            assert d.bug_id.tolist() == first.bug_id.tolist()  # tokens stay aligned
-            folds = cr.make_folds(len(d), p.folds, draw)
-            text = cr.text_folds(d, folds, 100, draw, tokens)
-            add(draw, "rung0", cr.simple(d))
-            if main:
-                add(draw, "rung1", cr.linear(d))
-            for r in (2, 4, 5, 6) if main else (5,):
-                add(draw, f"rung{r}", cr.dml(d, r, draw, folds=folds, text=text))
-            if check:
-                if has_emb:
-                    add(draw, "rung3", cr.dml(d, 3, draw, folds=folds, text=text))
-                add(
-                    draw,
-                    "rung5_forest",
-                    cr.dml(d, 5, draw, learner="forest", folds=folds, text=text),
-                )
-                for r in (2, 4, 5):
-                    add(draw, f"rung{r}_aipw", cr.aipw(d, r, draw, folds=folds, text=text))
-            if main and c.dataset == NVIDIA:
-                for k in p.h4_ks:
-                    if k >= len(others):
-                        continue
-                    rng = np.random.default_rng(seed_for(cid, draw, 50 + k))
-                    chosen = set(rng.choice(others, size=k, replace=False))
-                    sub = s.tries[s.tries.setup.isin(chosen)]
-                    oa = other_ai_rates(sub, c.setup, bugs).reset_index()
-                    dk = d.drop(columns=cr.OTHER).merge(oa, on="bug_id", how="left")
-                    add(draw, f"rung5_k{k}", cr.dml(dk, 5, draw, folds=folds, text=text))
-        tokens_all: list[list[str]] | None = None
-        for draw in range(p.secondary_draws):
-            d = data.with_features(one_try_copy(c, s.tries, draw, key_only=False), c, s)
-            tokens_all = tokens_all or tokenize(d.report)
-            folds = cr.make_folds(len(d), p.folds, draw)
-            text = cr.text_folds(d, folds, 100, draw, tokens_all)
-            add(draw, "rung0_allbugs", cr.simple(d))
-            add(draw, "rung1_allbugs", cr.linear(d))
-            for r in (2, 5):
-                add(draw, f"rung{r}_allbugs", cr.dml(d, r, draw, folds=folds, text=text))
-        if c.dataset in (OLDER, NEBIUS):
-            for k in p.k_tries:
-                for draw in range(p.draws):
-                    kd = k_try_copy(c, s.tries, k, draw)
-                    if kd.bug_id.nunique() >= p.min_ktry_bugs:
-                        add(draw, f"ktry{k}", cr.Result(k_try_answer(c, kd), float("nan")))
-    return pd.DataFrame(rows)
+def run_unit(cfg: Config, cid: str, p: Params) -> pd.DataFrame:
+    """All estimates of one comparison (every task in turn; used for the A3 re-runs)."""
+    return pd.concat(
+        [run_task(cfg, cid, part, draw, p)[0] for part, draw in tasks_of(cfg, cid, p)],
+        ignore_index=True,
+    )
+
+
+def tasks_of(cfg: Config, cid: str, p: Params) -> list[tuple[str, int]]:
+    """List the (part, draw) tasks of one comparison."""
+    c = next(x for x in _study(cfg).comparisons if x.cid == cid)
+    t = [("key", d) for d in range(p.precision_draws)]
+    t += [("all", d) for d in range(p.secondary_draws)]
+    if c.dataset in MANY_TRIES:
+        t.append(("ktry", -1))
+    return t
 
 
 def _slug(cid: str) -> str:
     return cid.replace("/", "__").replace("|", "--")
 
 
-def _unit_to_file(cfg: Config, cid: str, p: Params, path: Path, log_path: Path) -> str:
+def _name(part: str, draw: int) -> str:
+    return f"{part}-{draw:02d}.parquet" if draw >= 0 else f"{part}.parquet"
+
+
+def _task_to_file(cfg: Config, cid: str, part: str, draw: int, p: Params) -> str:
     t = time.time()
-    out = run_unit(cfg, cid, p)
-    tmp = path.with_suffix(".tmp")
-    out.to_parquet(tmp, index=False)
-    tmp.replace(path)
-    with log_path.open("a", encoding="utf-8") as fh:
-        fh.write(
-            f"{time.strftime('%H:%M:%S')} done {cid} ({len(out)} rows, {time.time() - t:.0f}s)\n"
-        )
+    est, left = run_task(cfg, cid, part, draw, p)
+    res = cfg.path("onetry_results")
+    for folder, frame in (("units", est), ("leftovers", left)):
+        if frame is None:
+            continue
+        path = res / folder / _slug(cid) / _name(part, draw)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        frame.to_parquet(tmp, index=False)
+        tmp.replace(path)
+    with (res / "units" / "_progress.log").open("a", encoding="utf-8") as fh:
+        fh.write(f"{time.strftime('%m-%d %H:%M:%S')} {cid} {part} {draw} {time.time() - t:.0f}s\n")
     return cid
 
 
+def sealed_cids(cfg: Config) -> list[str]:
+    """Comparisons in the sealed first run (amendment A9), from the sealed hash list."""
+    lst = cfg.root / "docs" / "one_try" / "sealed_units_v1.sha256"
+    if not lst.is_file():
+        return []
+    names = [
+        ln.split()[1] for ln in lst.read_text(encoding="utf-8").splitlines() if ".parquet" in ln
+    ]
+    slugs = {n.removesuffix(".parquet") for n in names}
+    return [c.cid for c in _study(cfg).comparisons if _slug(c.cid) in slugs]
+
+
 def run_all(
-    cfg: Config, p: Params, fresh: bool = False, log: Callable[[str], None] = print
+    cfg: Config,
+    p: Params,
+    fresh: bool = False,
+    only: list[str] | None = None,
+    log: Callable[[str], None] = print,
 ) -> Path:
-    """Run every comparison not yet done (largest first), in parallel."""
-    units = cfg.path("onetry_results") / "units"
-    units.mkdir(parents=True, exist_ok=True)
-    log_path = units / "_progress.log"
+    """Run every task not yet done, in parallel (sealed comparisons first, then largest first).
+
+    ``only`` limits the run to some comparisons (one machine's share, A9).
+    """
+    prepare_text(cfg, log)
+    res = cfg.path("onetry_results")
+    (res / "units").mkdir(parents=True, exist_ok=True)
     s = _study(cfg)
-    keys = pd.read_parquet(cfg.path("onetry_results") / "answer_keys.parquet")
+    keys = pd.read_parquet(res / "answer_keys.parquet")
     size = dict(zip(keys.cid, keys.key_bugs, strict=True))
-    todo = sorted(
-        (
-            c.cid
-            for c in s.comparisons
-            if fresh or not (units / f"{_slug(c.cid)}.parquet").is_file()
-        ),
-        key=lambda cid: -size.get(cid, 0),
+    first = set(sealed_cids(cfg))
+    order = sorted(
+        (c.cid for c in s.comparisons if only is None or c.cid in only),
+        key=lambda cid: (cid not in first, -size.get(cid, 0)),
     )
-    log(f"full run: {len(todo)} of {len(s.comparisons)} comparisons to do, {p.jobs} at a time")
-    Parallel(n_jobs=p.jobs, backend="loky")(
-        delayed(_unit_to_file)(cfg, cid, p, units / f"{_slug(cid)}.parquet", log_path)
-        for cid in todo
+    todo = [
+        (cid, part, draw)
+        for cid in order
+        for part, draw in tasks_of(cfg, cid, p)
+        if fresh or not (res / "units" / _slug(cid) / _name(part, draw)).is_file()
+    ]
+    log(f"full run: {len(todo)} tasks over {len(order)} comparisons, {p.jobs} at a time")
+    Parallel(n_jobs=p.jobs, backend="loky", batch_size=1)(
+        delayed(_task_to_file)(cfg, cid, part, draw, p) for cid, part, draw in todo
     )
-    return units
+    return res / "units"
+
+
+def load_units(cfg: Config) -> pd.DataFrame:
+    """All saved estimates."""
+    files = sorted((cfg.path("onetry_results") / "units").glob("*/*.parquet"))
+    return pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+
+
+def a9_check(cfg: Config, tol: float = 0.003) -> dict[str, Any]:
+    """Amendment A9 pass rule: the new code against the sealed first run.
+
+    Checks the hashes, then compares estimates only (never the answer keys):
+    rungs 0 and 1 must match draw by draw; for rungs 2, 4, 5 and 6 the mean
+    over draws 0-19 per comparison must agree within ``tol`` (0.3 points).
+    """
+    sealed = cfg.path("onetry_results") / "sealed_v1"
+    lst = cfg.root / "docs" / "one_try" / "sealed_units_v1.sha256"
+    bad_hash = []
+    for ln in lst.read_text(encoding="utf-8").splitlines():
+        h, name = ln.split()
+        if hashlib.sha256((sealed / name).read_bytes()).hexdigest() != h:
+            bad_hash.append(name)
+    rows = []
+    for cid in sealed_cids(cfg):
+        old = pd.read_parquet(sealed / f"{_slug(cid)}.parquet")
+        new_files = sorted(
+            (cfg.path("onetry_results") / "units" / _slug(cid)).glob("key-*.parquet")
+        )
+        if len(new_files) < 20:
+            continue
+        new = pd.concat([pd.read_parquet(f) for f in new_files])
+        for m in MAIN:
+            a = old[(old.method == m) & (old.draw < 20)].set_index("draw").estimate.sort_index()
+            b = new[(new.method == m) & (new.draw < 20)].set_index("draw").estimate.sort_index()
+            if m in ("rung0", "rung1"):
+                diff = float(np.max(np.abs(a.to_numpy() - b.reindex(a.index).to_numpy())))
+                ok = diff < 1e-9
+            else:
+                diff = abs(float(a.mean()) - float(b.mean()))
+                ok = diff < tol
+            rows.append({"cid": cid, "method": m, "diff": diff, "ok": ok})
+    t = pd.DataFrame(rows)
+    return {
+        "hashes_ok": not bad_hash,
+        "bad_hashes": bad_hash,
+        "comparisons": int(t.cid.nunique()) if len(t) else 0,
+        "passed": bool(not bad_hash and len(t) and t.ok.all()),
+        "max_diff_dml": float(t[~t.method.isin(["rung0", "rung1"])]["diff"].max())
+        if len(t)
+        else float("nan"),
+        "table": t.to_dict(orient="records"),
+    }
 
 
 # ---------------------------------------------------------------- scores
@@ -396,25 +602,41 @@ def h4(
 # ---------------------------------------------------------------- reproducibility
 
 
+def home_cids(cfg: Config) -> list[str]:
+    """Comparisons run on this (home) computer: all, unless the run was shared (A9)."""
+    plan = cfg.root / "docs" / "one_try" / "share_plan.json"
+    every = [c.cid for c in _study(cfg).comparisons]
+    if not plan.is_file():
+        return every
+    got = json.loads(plan.read_text(encoding="utf-8"))
+    home = next(k for k, v in got["machines"].items() if v.get("home"))
+    return [c for c in every if c in set(got["comparisons"][home])]
+
+
 def reproducibility(cfg: Config, p: Params, n: int = 3, seed: int = 0) -> dict[str, Any]:
-    """Re-run ``n`` random comparisons in full; every row must match (amendment A3)."""
+    """Re-run ``n`` random comparisons in full; every row must match (amendment A3).
+
+    If the run was shared across computers, the comparisons are drawn from those
+    made on this one (identity across different chips is checked by A9 instead).
+    """
     units = cfg.path("onetry_results") / "units"
-    s = _study(cfg)
+    pool = home_cids(cfg)
     rng = np.random.default_rng(seed)
-    chosen = sorted(
-        rng.choice([c.cid for c in s.comparisons], size=min(n, len(s.comparisons)), replace=False)
+    chosen = sorted(rng.choice(pool, size=min(n, len(pool)), replace=False))
+    todo = [(str(cid), part, draw) for cid in chosen for part, draw in tasks_of(cfg, str(cid), p)]
+    again = Parallel(n_jobs=p.jobs, backend="loky", batch_size=1)(
+        delayed(run_task)(cfg, cid, part, draw, p) for cid, part, draw in todo
     )
-    same = {}
-    for cid in chosen:
-        a = pd.read_parquet(units / f"{_slug(cid)}.parquet")
-        b = run_unit(cfg, cid, p)
+    same: dict[str, bool] = dict.fromkeys(map(str, chosen), True)
+    for (cid, part, draw), (b, _) in zip(todo, again, strict=True):
+        a = pd.read_parquet(units / _slug(cid) / _name(part, draw))
         key = ["draw", "method"]
         a, b = a.sort_values(key).reset_index(drop=True), b.sort_values(key).reset_index(drop=True)
-        same[cid] = bool(
+        same[cid] &= bool(
             a.shape == b.shape
             and np.allclose(a.estimate, b.estimate, equal_nan=True, atol=1e-12, rtol=0)
         )
-    return {"comparisons": chosen, "identical": same, "all_identical": all(same.values())}
+    return {"comparisons": list(same), "identical": same, "all_identical": all(same.values())}
 
 
 # ---------------------------------------------------------------- charts and report
@@ -506,7 +728,7 @@ def write_report(
         "# Step 7: Evaluation",
         "",
         "*Generated by `agent-tips onetry evaluate`. Paper 2, the one-try study. Rules frozen in "
-        "`01_problem.md` (tag `one-try-plan-v1`, amendments A1–A6).*",
+        "`01_problem.md` (tag `one-try-plan-v1`, amendments A1–A9).*",
         "",
         "## In plain words",
         "",
@@ -552,7 +774,7 @@ def write_report(
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     rows_by_method = {str(r["method"]): r for r in summ.to_dict(orient="records")}
-    for m in [x for x in MAIN + ["rung3"] if x in rows_by_method]:
+    for m in [x for x in MAIN + SECONDARY_RUNGS if x in rows_by_method]:
         q = rows_by_method[m]
         lines.append(
             f"| {LABELS[m]} | {int(q['comparisons'])} | {_p(q['mean_abs_error'])} | "
@@ -594,7 +816,7 @@ def write_report(
         "| --- | --- | --- |",
     ]
     for m, v in r["secondary"].items():
-        lines.append(f"| {LABELS[m]} | {_p(v['key'])} | {_p(v['all'])} |")
+        lines.append(f"| {LABELS.get(m, m)} | {_p(v['key'])} | {_p(v['all'])} |")
     lines += [
         "",
         "## H4b: rung 5 with fewer other AIs (NVIDIA)",
@@ -667,25 +889,176 @@ def write_report(
     return path
 
 
+def _lab(m: str) -> str:
+    return LABELS.get(m, m)
+
+
+def a8_lines(a8: dict[str, Any], r: dict[str, Any]) -> list[str]:
+    """Report sections for amendments A8 and A9 (secondary; H1-H4 unchanged)."""
+    lines = [
+        "## Secondary scores (amendment A8; none changes H1–H4)",
+        "",
+        "### Noise-corrected bias",
+        "",
+        "*Error floor = how far a perfect method would still land from the answer key by chance "
+        "(joint bootstrap of bugs: the answer key and the one-try estimates are redrawn together). "
+        "Bias = the error that is left once that chance part is taken out (root mean square over "
+        "comparisons). Clearly off = share of comparisons whose error is more than 1.96 floors.*",
+        "",
+        "| Method | Comparisons | RMS error | Median floor | Bias (noise taken out) | Clearly off |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for q in a8["bias"].to_dict(orient="records"):
+        lines.append(
+            f"| {_lab(q['method'])} | {q['comparisons']} | {_p(q['rms_error'])} | "
+            f"{_p(q['median_floor'])} | {_p(q['bias_rms'])} | {q['clearly_off']:.0%} |"
+        )
+    lines += [
+        "",
+        "### Against the answer key that weights bugs like the method",
+        "",
+        "*Partialling-out ML weights each bug by p(1 − p), AIPW weights bugs equally; the frozen "
+        "answer key uses n_a·n_b/(n_a + n_b). Here each method is scored against the key with its "
+        "own weights.*",
+        "",
+        "| Method | Average distance, frozen key | Average distance, aligned key | Bias, aligned key |",
+        "| --- | --- | --- | --- |",
+    ]
+    ba = {q["method"]: q for q in a8["bias_aligned"].to_dict(orient="records")}
+    frozen = {q["method"]: q for q in a8["bias"].to_dict(orient="records")}
+    for m, v in a8["aligned_mae"].items():
+        if m in ba:
+            lines.append(
+                f"| {_lab(m)} | {_p(frozen[m]['rms_error']) if m in frozen else '—'} (RMS) | "
+                f"{_p(v)} | {_p(ba[m]['bias_rms'])} |"
+            )
+    lines += [
+        "",
+        "### Paired contrasts",
+        "",
+        "*|error A| − |error B| on the same comparisons (positive = B is closer). Intervals: per-setup "
+        "t (setups − 1 degrees of freedom) and Webb wild cluster bootstrap; LOSO = range when one "
+        "setup is left out. NVIDIA setups share bugs and models, so setups are not fully independent.*",
+        "",
+        "| A | B | Comparisons | Mean | t interval | Wild interval | LOSO range |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for q in a8["contrasts"].to_dict(orient="records"):
+        lines.append(
+            f"| {_lab(q['a'])} | {_lab(q['b'])} | {q['comparisons']} | {_p(q['mean'])} | "
+            f"{_p(q['t_lo'])} to {_p(q['t_hi'])} | {_p(q['wild_lo'])} to {_p(q['wild_hi'])} | "
+            f"{_p(q['loso_min'])} to {_p(q['loso_max'])} |"
+        )
+    lines += [
+        "",
+        "### Few-cluster intervals for the average distance",
+        "",
+        "| Method | Mean | Setups | t interval (per-setup means) | Wild interval | LOSO range |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for q in a8["few_clusters"].to_dict(orient="records"):
+        lines.append(
+            f"| {_lab(q['method'])} | {_p(q['mean'])} | {q['setups']} | {_p(q['t_lo'])} to "
+            f"{_p(q['t_hi'])} | {_p(q['wild_lo'])} to {_p(q['wild_hi'])} | {_p(q['loso_min'])} "
+            f"to {_p(q['loso_max'])} |"
+        )
+    lines += [
+        "",
+        "### Interval quality",
+        "",
+        "*Coverage rewards wide intervals, so we also report width, the interval score (width plus "
+        "40 × the distance by which the interval misses the answer key; lower is better), detection "
+        "(answer keys with a clear direction: share of draws reaching it) and false alarms (answer "
+        "keys with no clear direction: share of draws claiming one).*",
+        "",
+        "| Method | Width | Interval score | Detection | False alarms |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for q in a8["intervals"].to_dict(orient="records"):
+        lines.append(
+            f"| {_lab(q['method'])} | {_p(q['width'])} | {_p(q['score'])} | "
+            f"{q['detect']:.0%} | {q['false_alarm']:.0%} |"
+        )
+    lines += [
+        "",
+        "### How well the guessers guess (model diagnostics)",
+        "",
+        "*R² of the fix model; AUC of the choice model (0.5 = no better than chance); choice left "
+        "over = share of the choice's variation the model could not explain (the variation the "
+        "estimate is built from).*",
+        "",
+        "| Method | R² (fix) | AUC (choice) | Choice left over |",
+        "| --- | --- | --- | --- |",
+    ]
+    for q in a8["diagnostics"].to_dict(orient="records"):
+        lines.append(
+            f"| {_lab(q['method'])} | {q['r2_y']:.3f} | {q['auc_t']:.3f} | {q['t_left']:.2f} |"
+        )
+    lines += [
+        "",
+        f"### Sensitivity: precise answer keys only (noise floor ≤ 1.5 points, "
+        f"{a8['sensitivity_comparisons']} comparisons)",
+        "",
+        "| Method | Comparisons | Average distance | 95% bounds |",
+        "| --- | --- | --- | --- |",
+    ]
+    for q in a8["sensitivity"]:
+        lines.append(
+            f"| {_lab(q['method'])} | {q['comparisons']} | {_p(q['mean_abs_error'])} | "
+            f"{_p(q['lo95'])}–{_p(q['hi95'])} |"
+        )
+    ab = a8["allbugs"]
+    lines += [
+        "",
+        "### All-bugs copies: details",
+        "",
+        "- Share of the ML weight on bugs that are **not** key bugs: "
+        + ", ".join(f"{_lab(k)} {v:.0%}" for k, v in ab["nonkey_weight"].items())
+        + ".",
+        f"- Gradient boosting's automatic early stopping (on above 10,000 rows) was on in "
+        f"{ab['early_stopping_copies']} of {ab['ml_copies']} all-bugs ML fits (NVIDIA copies).",
+        "",
+        "## Amendment A9 checks",
+        "",
+    ]
+    a9 = r.get("a9")
+    if a9:
+        lines.append(
+            f"- **Sealed first run** ({a9['comparisons']} comparisons; hashes "
+            f"{'intact' if a9['hashes_ok'] else '**changed**'}): rungs 0–1 identical and ML rungs "
+            f"within 0.3 points (largest difference {_p(a9['max_diff_dml'])}): "
+            + ("**passed**." if a9["passed"] else "**not passed**.")
+        )
+    cc = r.get("crosscheck")
+    if cc:
+        lines.append(
+            f"- **Across computers** ({len(cc['rows'])} draws re-run here): "
+            + ("**passed**." if cc["passed"] else "**not passed**.")
+        )
+    elif a9 is not None:
+        lines.append("- **Across computers:** the whole run was on one computer.")
+    return lines
+
+
 def evaluate(cfg: Config, p: Params, log: Callable[[str], None] = print) -> Path:
     """Score all units, test H1-H4, run the checks and write the report."""
     res = cfg.path("onetry_results")
-    units = pd.concat(
-        [pd.read_parquet(f) for f in sorted((res / "units").glob("*.parquet"))], ignore_index=True
-    )
+    units = load_units(cfg)
     keys = pd.read_parquet(res / "answer_keys.parquet")
     inv = pd.read_parquet(res / "inventory.parquet")
     margin = float(cfg.raw["onetry"]["margin"])
     reps = int(cfg.raw["onetry"]["bootstrap_reps"])
     main_units = units[units.draw < p.draws]
     sc = scores(main_units, keys)
-    summ = summary_table(sc, MAIN + ["rung3"], reps, cfg.seed)
+    summ = summary_table(sc, MAIN + SECONDARY_RUNGS, reps, cfg.seed)
     log("hypotheses")
     hyp = hypotheses(sc, summ, inv, main_units, keys, margin, reps, cfg.seed)
     early = scores(units[units.draw < p.check_draws], keys)
     checks = {}
     for check, main_m in (
         ("rung5_forest", "rung5"),
+        ("rung5_real", "rung5"),
+        ("rung7", "rung5"),
         ("rung2_aipw", "rung2"),
         ("rung4_aipw", "rung4"),
         ("rung5_aipw", "rung5"),
@@ -706,6 +1079,16 @@ def evaluate(cfg: Config, p: Params, log: Callable[[str], None] = print) -> Path
         }
         for m in ("rung0", "rung1", "rung2", "rung5")
     }
+    for name, base in (
+        ("rung0_allbugs_trim", "rung0"),
+        ("rung1_allbugs_trim", "rung1"),
+        ("rung5_aipw_allbugs", "rung5_aipw"),
+        ("rung5_aipw_allbugs_trim", "rung5_aipw"),
+    ):
+        secondary[name] = {
+            "key": float(sec[sec.method == base].abs_error.mean()),
+            "all": float(sec[sec.method == name].abs_error.mean()),
+        }
     kt = sc[sc.method.str.startswith("ktry")].assign(k=lambda x: x.method.str[4:].astype(int))
     rq4 = [
         {
@@ -727,6 +1110,8 @@ def evaluate(cfg: Config, p: Params, log: Callable[[str], None] = print) -> Path
     prec_passed = all(abs(a - b) < 0.002 for a, b in prec.values())
     log("reproducibility re-runs")
     repro = reproducibility(cfg, p)
+    log("amendment A8: secondary scores")
+    a8 = secondary_scores(cfg, p, units, main_units, sc, keys, margin, reps)
     report = {
         "margin": margin,
         "params": asdict(p),
@@ -736,6 +1121,13 @@ def evaluate(cfg: Config, p: Params, log: Callable[[str], None] = print) -> Path
         "rq4": rq4,
         "precision": {**prec, "passed": prec_passed},
         "repro": repro,
+        "a8": {k: v for k, v in a8.items() if not isinstance(v, pd.DataFrame)},
+        "a9": a9_check(cfg) if sealed_cids(cfg) else None,
+        "crosscheck": (
+            json.loads((res / "crosscheck.json").read_text(encoding="utf-8"))
+            if (res / "crosscheck.json").is_file()
+            else None
+        ),
     }
     sc.to_parquet(res / "results.parquet", index=False)
     (res / "evaluation.json").write_text(
@@ -747,7 +1139,84 @@ def evaluate(cfg: Config, p: Params, log: Callable[[str], None] = print) -> Path
     chart_ladder(summ, margin, cfg)
     chart_k(hyp["H4"], cfg)
     chart_ktry(sc, cfg)
-    return write_report(cfg, report, summ, sc)
+    path = write_report(cfg, report, summ, sc)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write("\n" + "\n".join(a8_lines(a8, report)) + "\n")
+    return path
+
+
+def secondary_scores(
+    cfg: Config,
+    p: Params,
+    units: pd.DataFrame,
+    main_units: pd.DataFrame,
+    sc: pd.DataFrame,
+    keys: pd.DataFrame,
+    margin: float,
+    reps: int,
+) -> dict[str, Any]:
+    """Amendment A8: every secondary score (none changes H1-H4)."""
+    res = cfg.path("onetry_results")
+    s = _study(cfg)
+    methods = MAIN + SECONDARY_RUNGS
+    ak = extra.aligned_keys(s, reps)
+    al = extra.aligned_scores(main_units, keys, ak)
+    al_mae = al.assign(a=al.aligned_error.abs()).groupby("method").a.mean().to_dict()
+    fl, diag = extra.floors(cfg, s, _slug, p.draws)
+    bias = extra.bias_table(fl, methods + extra.AIPW_METHODS, "cmh")
+    fl_al = fl.assign(error_al=np.nan, floor_al=np.nan)
+    for w in ("dml", "ate"):
+        if f"error_{w}" in fl:
+            hit = fl.method.map(extra.target_of) == w
+            fl_al.loc[hit, "error_al"] = fl.loc[hit, f"error_{w}"]
+            fl_al.loc[hit, "floor_al"] = fl.loc[hit, f"floor_{w}"]
+    bias_al = extra.bias_table(fl_al, methods[2:] + extra.AIPW_METHODS, "al")
+    pairs = [
+        ("rung0", "rung2"),
+        ("rung2", "rung5"),
+        ("rung0", "rung5"),
+        ("rung2", "rung4"),
+        ("rung4", "rung5"),
+        ("rung5_real", "rung5"),
+        ("rung5", "rung7"),
+    ]
+    con = extra.contrasts(sc, pairs, 9999, cfg.seed)
+    few = pd.DataFrame(
+        [
+            {"method": m, **extra.cluster_ci(g.abs_error, g.setup, 9999, cfg.seed)}
+            for m, g in sc[sc.method.isin(methods)].groupby("method")
+        ]
+    )
+    iq = extra.interval_quality(main_units, keys, methods + extra.AIPW_METHODS)
+    precise = keys[keys.noise_floor <= extra.PRECISE].cid
+    sens_sc = sc[sc.cid.isin(precise)]
+    sens = summary_table(sens_sc, MAIN, reps, cfg.seed) if len(sens_sc) else pd.DataFrame()
+    alld = extra.allbugs_details(cfg, s, units, _slug, p.secondary_draws)
+    dg = diag.groupby("method")[["r2_y", "auc_t", "t_left"]].mean().reset_index()
+    extra.write_parquets(
+        res,
+        aligned_keys=ak,
+        aligned_errors=al,
+        floors=fl,
+        diagnostics=diag,
+        contrasts=con,
+        few_clusters=few,
+        intervals=iq,
+    )
+    sens_rows = sens.drop(columns="boot").to_dict(orient="records") if len(sens) else []
+    return {
+        "aligned_mae": al_mae,
+        "bias": bias,
+        "bias_aligned": bias_al,
+        "contrasts": con,
+        "few_clusters": few,
+        "intervals": iq,
+        "diagnostics": dg,
+        "sensitivity": sens_rows,
+        "sensitivity_comparisons": int(len(precise)),
+        "allbugs": alld,
+        "margin": margin,
+    }
 
 
 def run(cfg: Config, fresh: bool = False, log: Callable[[str], None] = print) -> Path:

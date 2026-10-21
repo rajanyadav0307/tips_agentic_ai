@@ -14,6 +14,11 @@
 - Phase C:
   - Step 5: `agent-tips onetry features` builds report facts, human-fix size, other AIs' fix rate (the studied setup is always left out) and an IRT difficulty fitted on other setups only; the report-text tool (TF-IDF → SVD) is fitted inside training folds. Optional `--embeddings` adds language-model embeddings (gpu extra, pinned model). Leak checks; report `docs/one_try/05_features.md`.
   - Dependencies: `scikit-learn` added; `sentence-transformers` in the optional `gpu` extra.
+- Phase D (Steps 6–7), after an outside expert review, amendments A8 and A9 in `docs/one_try/01_problem.md` (tag `one-try-plan-v1-A8A9`):
+  - secondary scores (`agent_tips.onetry.extra`): aligned answer keys, a joint-bootstrap error floor and noise-corrected bias, paired contrasts, few-cluster intervals (per-setup t, Webb wild bootstrap, leave one setup out), interval quality, model diagnostics, sensitivity on precise answer keys and all-bugs details;
+  - two new rungs: realistic other AIs (one try per other setup) and an oracle (the AI's own other tries; many-tries datasets only);
+  - faster run: one task = comparison × draw with one thread each, report text fitted once per dataset and cached, random-forest check on 2 draws; the 15 comparisons of the first run are sealed unscored (`docs/one_try/sealed_units_v1.sha256`) and serve as a pass check;
+  - the run can be shared across several computers (`agent-tips onetry plan / bundle / run / pack / merge / crosscheck`, module `agent_tips.onetry.share`), with a fixed plan (`docs/one_try/share_plan.json`), hashed result zips and a cross-computer check.
 
 ## [1.0.0] - 2026-10-20
 

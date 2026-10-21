@@ -10,6 +10,8 @@ import argparse
 import platform
 import sys
 from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
 
 from agent_tips import __version__
 from agent_tips.config import load_config
@@ -133,6 +135,36 @@ def _onetry(args: argparse.Namespace) -> int:
         from agent_tips.onetry import evaluate
 
         print(f"report: {evaluate.run(cfg, fresh=args.fresh)}")
+    else:
+        return _onetry_share(args, cfg)
+    return 0
+
+
+def _onetry_share(args: argparse.Namespace, cfg: Any) -> int:
+    """Paper 2, Step 7 shared across computers (amendment A9)."""
+    from agent_tips.onetry import share
+
+    if args.step in ("run", "bundle", "pack") and not args.machine:
+        print(f"onetry {args.step} needs --machine (one of {sorted(share.machines(cfg))})")
+        return 2
+    if args.step == "plan":
+        share.plan(cfg)
+    elif args.step == "run":
+        share.run(cfg, args.machine, jobs=args.jobs)
+        left = share.missing(cfg, share.assigned(cfg, args.machine))
+        print("done: every task finished" if not left else f"{len(left)} tasks left; run again")
+    elif args.step == "bundle":
+        share.bundle(cfg, args.machine)
+    elif args.step == "pack":
+        share.pack(cfg, args.machine)
+    elif args.step == "merge":
+        if not args.file:
+            print("onetry merge needs the results zip: agent-tips onetry merge results-NAME.zip")
+            return 2
+        share.merge(cfg, Path(args.file))
+    elif args.step == "crosscheck":
+        out = share.crosscheck(cfg)
+        print("crosscheck " + ("passed" if out["passed"] else "FAILED") + f": {out['rows']}")
     return 0
 
 
@@ -158,11 +190,30 @@ def build_parser() -> argparse.ArgumentParser:
     ot = sub.add_parser("onetry", help="Paper 2 (one-try study): run one step of its procedure")
     ot.add_argument(
         "step",
-        choices=["collect", "clean", "eda", "features", "model", "evaluate"],
+        choices=[
+            "collect",
+            "clean",
+            "eda",
+            "features",
+            "model",
+            "evaluate",
+            "plan",
+            "run",
+            "bundle",
+            "pack",
+            "merge",
+            "crosscheck",
+        ],
         help="collect: verify sources and extract (Step 2); clean: cleaning rules (Step 3); "
         "eda: exploration and comparison inventory (Step 4); features: Step 5; "
-        "model: answer keys and go/no-go (Step 6); evaluate: full run and tests (Step 7)",
+        "model: answer keys and go/no-go (Step 6); evaluate: full run and tests (Step 7). "
+        "Step 7 on several computers: plan (split the work), bundle (zip for a partner), "
+        "run (this machine's share), pack (zip the results), merge (add a results zip), "
+        "crosscheck (re-run a few tasks of the other machines here)",
     )
+    ot.add_argument("file", nargs="?", help="merge: the results zip to add")
+    ot.add_argument("--machine", help="run/bundle/pack: which computer (see the config)")
+    ot.add_argument("--jobs", type=int, help="run: parallel tasks (default from the config)")
     ot.add_argument("--quick", action="store_true", help="collect: check sizes, skip re-hashing")
     ot.add_argument(
         "--embeddings", action="store_true", help="features: also compute rung-3 embeddings (GPU)"

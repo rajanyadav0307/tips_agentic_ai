@@ -7,6 +7,17 @@
 - :func:`one_try_copy`: keep one random try per key bug, the way a study with
   one try per bug would see the data.
 - :func:`k_try_copy`: keep *k* random tries per bug (RQ4).
+
+Amendment A8 adds:
+
+- :func:`key_parts` / :func:`aligned_key`: the answer key with the bug
+  weights each method actually uses (``cmh`` = the frozen key; ``dml`` = one
+  copy per bug weighted by p(1−p), what partialling-out targets; ``ate`` =
+  every bug equal, what AIPW targets);
+- :func:`own_loo`: the studied AI's own fix rate on the bug from its *other*
+  tries (the "oracle" rung, many-tries datasets only);
+- :func:`realistic_other`: other AIs' rates from one random try per other
+  setup, as a real study would have them.
 """
 
 from __future__ import annotations
@@ -19,6 +30,9 @@ import pandas as pd
 
 from agent_tips.models.estimators import bootstrap, build_strata, weighted_diff
 from agent_tips.onetry.comparisons import Comparison
+from agent_tips.onetry.features import other_ai_rates
+
+WEIGHTINGS = ("cmh", "dml", "ate")
 
 
 @dataclass(frozen=True)
@@ -70,15 +84,77 @@ def answer_key(c: Comparison, tries: pd.DataFrame, reps: int = 2000, seed: int =
     )
 
 
+def key_parts(c: Comparison, tries: pd.DataFrame, weighting: str = "cmh") -> pd.DataFrame:
+    """Per key bug: numerator and denominator of the weighted within-group difference.
+
+    Group weights: ``cmh`` n_a·n_b/n_g (the frozen key); ``dml`` the same divided
+    by the bug's key tries (the drawn try comes from group g with chance n_g/N,
+    times p(1−p)); ``ate`` n_g/N (each bug counts once). The answer is
+    Σ num / Σ den over bugs.
+    """
+    st = build_strata(key_rows(c, tries), ["group"], c.column, c.a, c.b, "y", issue_col="bug_id")
+    n_g = st.n_a + st.n_b
+    bug = pd.Series(st.issue)
+    n_bug = pd.Series(n_g).groupby(bug).transform("sum").to_numpy(float)
+    w = {"cmh": st.weights, "dml": st.weights / n_bug, "ate": n_g / n_bug}[weighting]
+    per = pd.DataFrame({"bug_id": st.issue, "num": w * st.diffs, "den": w})
+    return per.groupby("bug_id", sort=True)[["num", "den"]].sum().reset_index()
+
+
+def aligned_key(
+    c: Comparison, tries: pd.DataFrame, weighting: str, reps: int = 2000
+) -> tuple[float, float, float]:
+    """Answer key with the given bug weights: estimate and 95% bootstrap bounds (bugs resampled)."""
+    kp = key_parts(c, tries, weighting)
+    if kp.empty:
+        return float("nan"), float("nan"), float("nan")
+    num, den = kp.num.to_numpy(), kp.den.to_numpy()
+    rng = np.random.default_rng(seed_for(c.cid, 0, 9))
+    idx = rng.integers(0, len(num), size=(reps, len(num)))
+    boot = num[idx].sum(1) / den[idx].sum(1)
+    lo, hi = np.nanpercentile(boot, [2.5, 97.5])
+    return float(num.sum() / den.sum()), float(lo), float(hi)
+
+
 def one_try_copy(
     c: Comparison, tries: pd.DataFrame, draw: int, key_only: bool = True
 ) -> pd.DataFrame:
-    """Keep one random try per bug: bug_id, y, t (key bugs only unless ``key_only`` is False)."""
+    """Keep one random try per bug: bug_id, try_id, y, t (key bugs only unless ``key_only``)."""
     d = key_rows(c, tries) if key_only else _with_groups(c, c.rows(tries))
     rng = np.random.default_rng(seed_for(c.cid, draw, 1 if key_only else 2))
     d = d.sort_values(["bug_id", "try_id"]).assign(u=lambda x: rng.random(len(x)))
     first = d.sort_values(["bug_id", "u"]).groupby("bug_id").head(1)
-    return first[["bug_id", "y", "t"]].sort_values("bug_id").reset_index(drop=True)
+    return first[["bug_id", "try_id", "y", "t"]].sort_values("bug_id").reset_index(drop=True)
+
+
+def own_loo(c: Comparison, tries: pd.DataFrame, copy: pd.DataFrame) -> pd.DataFrame:
+    """Return the studied AI's fix rate on each bug from its other tries (drawn try left out).
+
+    Uses every try of the setup on the bug, whatever its choice. Not available
+    to a real one-try study: it is the "oracle" rung (A8), a best case.
+    """
+    own = tries[(tries.setup == c.setup) & tries.bug_id.isin(copy.bug_id)]
+    g = own.groupby("bug_id").y.agg(["sum", "size"])
+    d = copy[["bug_id", "y"]].join(g, on="bug_id")
+    n = d["size"] - 1
+    rate = (d["sum"] - d.y) / n.where(n > 0)
+    return pd.DataFrame(
+        {
+            "bug_id": d.bug_id,
+            "own_rate": rate.fillna(-1.0).to_numpy(),
+            "n_own": n.to_numpy(float),
+            "own_missing": rate.isna().astype(float).to_numpy(),
+        }
+    )
+
+
+def realistic_other(c: Comparison, tries: pd.DataFrame, bugs: pd.Index, draw: int) -> pd.DataFrame:
+    """Other AIs' rates on each bug from one random try per other setup (A8)."""
+    o = tries[(tries.setup != c.setup) & tries.bug_id.isin(bugs)].sort_values("try_id")
+    rng = np.random.default_rng(seed_for(c.cid, draw, 40))
+    o = o.assign(u=rng.random(len(o))).sort_values(["bug_id", "setup", "u"])
+    one = o.groupby(["bug_id", "setup"]).head(1)
+    return other_ai_rates(one, c.setup, bugs).reset_index()
 
 
 def k_try_copy(c: Comparison, tries: pd.DataFrame, k: int, draw: int) -> pd.DataFrame:

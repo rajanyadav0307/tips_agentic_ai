@@ -183,3 +183,101 @@ Timing on the largest comparison (5,514 bugs), per draw: about 30 s for the text
 - **Caveat reported with it:** the answer key is defined on key bugs only, so for the all-bugs copies part of the "error" can come from the two groups of bugs having different true effects.
 - **Margin check (Step 6):** the median noise floor of the answer keys is 1.7 points, so the ±2-point margin is *not* at least twice the noise floor. As frozen in §7, this is reported and the margin stays.
 
+
+**A8 (2026-10-21, after an independent expert review, before any Step 7 result was scored). Secondary statistics.**
+- **What prompted it:** a review of the design by an outside expert (machine learning, MLOps, data science). The review judged the design sound. It found four weak spots in how the methods are *scored*:
+  - the answer key weights bugs differently from the ML methods;
+  - the answer key and the one-try copies share tries, so they share noise;
+  - coverage and "same conclusion" reward wide intervals;
+  - there are only 9 AI setups (clusters).
+- **Unchanged:**
+  - H1–H4 and their decision rules;
+  - the ±2-point margin;
+  - the main score (average absolute distance from the frozen answer key);
+  - the comparisons, the answer keys and the draws.
+- **Wording:** we call the main score the *distance from the many-tries answer*. The answer key is itself an estimate with its own noise.
+- **Everything below is secondary.** It is reported to help read the results and never used to accept or reject H1–H4.
+  1. **Aligned answer keys.** Two extra keys are computed from the same tries, with 2,000 bootstrap resamples of bugs:
+     - *dml*: group weight n_a·n_b/(n_g·N), with N the bug's key tries. This is the frozen weight divided by N, which is what partialling-out targets with one try per bug.
+     - *ate*: group weight n_g/N, so each bug counts once. This is what AIPW targets.
+
+     ML rungs are also scored against *dml*, AIPW checks against *ate*, and rungs 0–1 against the frozen key.
+  2. **Error floor and noise-corrected bias.**
+     - Every rung's estimate is a slope Σ r_y·r_t / Σ r_t² of per-bug leftovers; AIPW is a mean of per-bug scores. These are saved for draws 0–19.
+     - A **joint bootstrap** resamples key bugs 1,000 times (fixed seed). It redraws the answer key and all 20 estimates *together*, without refitting.
+     - The **error floor** is the standard deviation of (mean estimate − key) over the resamples.
+     - Reported per rung:
+       - the noise-corrected bias, √max(0, mean(error² − floor²)) over comparisons;
+       - the share of comparisons with |error| > 1.96 floors.
+  3. **Paired contrasts.** |error A| − |error B| on the same comparisons, for these pairs:
+     - 0 vs 2;
+     - 2 vs 5;
+     - 0 vs 5;
+     - 2 vs 4;
+     - 4 vs 5;
+     - realistic 5 vs 5;
+     - 5 vs oracle.
+  4. **Few-cluster intervals,** for every average and contrast:
+     - per-setup means with a t interval on (setups − 1) degrees of freedom;
+     - a Webb six-point wild cluster bootstrap (9,999 draws);
+     - the range when one setup is left out.
+
+     NVIDIA setups share bugs and models, so they are not fully independent; this is stated with the results.
+  5. **Interval quality,** per rung:
+     - mean width;
+     - interval score (width + 40 × miss distance);
+     - detection: for keys whose CI excludes 0, the share of draws reaching that direction;
+     - false alarms: for keys whose CI contains 0, the share of draws claiming a direction.
+  6. **Model diagnostics,** per ML rung:
+     - R² of the fix model;
+     - AUC of the choice model;
+     - Var(r_t)/Var(t), the share of the choice left over.
+  7. **Two new rungs** (draws 0–19, same settings as rung 5):
+     - **Realistic other AIs** (`rung5_real`): the other AIs' rate is computed from **one** random try per other setup and bug (fixed seeds), as a real study would have it.
+     - **Oracle** (`rung7`): rung 4's features plus the studied AI's own fix rate on the bug from its *other* tries, leaving out the drawn try (with count and missing flag). This is a best case that no one-try study has.
+       - It is run **only for the older AI and Nebius** (10–13 tries per bug).
+       - With NVIDIA's 2–3 tries, the "other" try of a key bug mostly made the *opposite* choice. Its outcome would then carry the effect itself, so the oracle is not defined there.
+  8. **Sensitivity:** every average is also reported on comparisons whose answer key has a noise floor ≤ 1.5 points.
+  9. **All-bugs copies (A7).** Reported in addition:
+     - the share of the ML weight (Σ r_t²) that falls on non-key bugs;
+     - AIPW rung 5 on all bugs;
+     - trimmed versions of rungs 0, 1 and AIPW rung 5 that keep only bugs whose out-of-fold chance of choice *a* (gradient-boosting classifier, rung-5 features) is between 0.1 and 0.9.
+- **Disclosure.** scikit-learn's gradient boosting turns on early stopping automatically above 10,000 rows. This happens only in some NVIDIA all-bugs copies, and the count is reported. The setting is deterministic (`random_state` 0), so it is left as frozen.
+- **H3 power, stated in advance:**
+  - H3's upper bound comes from 9 setup clusters. With an average rung-5 distance of about 1 point (the pilot), the one-sided 95% bound stays below 2 only if the per-setup spread of that distance is below about 1.6 points (1 + 1.86·SD/3 < 2).
+  - A failed H3 alone is therefore weak evidence that the correction fails. It is read together with the noise-corrected bias and the paired contrasts.
+  - The bootstrap over 9 clusters can also be too narrow; the few-cluster intervals are the check.
+
+**A9 (2026-10-21, same review, before any Step 7 result was scored). Computing and reproducibility.**
+- **Unit of work.** One task is one comparison × one draw, with **one thread per task** and 8 parallel tasks on the study laptop. Before this, 5 comparisons each ran with the `threads: 4` setting meant for data loading, which over-booked the 10 cores. This change does not alter any number.
+- **Report text, fitted once per dataset.**
+  - The TF-IDF → 100-dimension SVD model (frozen settings, seed 0) is fitted **once per dataset on all of its bug reports** and cached (`data/onetry/features/text_svd.parquet`). Before, it was fitted inside each training fold.
+  - It uses report text only, never an outcome or a choice, so held-out bugs cannot leak an answer.
+  - This removes most of the computing time but changes ML estimates slightly.
+  - **Pass rule against the sealed first run** (below):
+    - rungs 0 and 1 must be identical draw by draw;
+    - for rungs 2, 4, 5 and 6, the mean over draws 0–19 per comparison must agree within **0.3 points**.
+
+    If the rule fails, the per-fold text model is restored and the whole run is repeated with it.
+- **Random-forest check:** draws 0–1 instead of 0–4 (A1), with `n_jobs` 1.
+- **Sealed first run.**
+  - The 15 comparisons finished under the A1–A7 code were moved, unscored, to `outputs/onetry/sealed_v1/`. Their SHA-256 hashes are in `docs/one_try/sealed_units_v1.sha256`.
+  - Only their *estimates* are read, for the pass rule above; they are never scored against an answer key.
+  - These comparisons run first, and on the computer that made them.
+- **Several computers.** The run may be split across the study team's three laptops:
+  - an Apple M4 (home: the sealed run, the A3 re-runs);
+  - an AMD Ryzen 9 5900HS;
+  - an AMD Ryzen 3 3350U.
+
+  How the split works:
+  - Whole comparisons are assigned by a fixed plan (`docs/one_try/share_plan.json`, committed before the run).
+  - Partners get one zip with the committed code, the study data and the plan, and use the same locked libraries (`uv.lock`).
+  - Every result folder records the computer, system and library versions.
+  - Results come back as zips with SHA-256 hashes, which are checked on merge.
+  - **Cross-computer rule:** for 2 random comparisons per partner computer (seed 0), one draw from 0–4 (every rung and check) is re-run on the home computer:
+    - rungs 0 and 1 must be identical;
+    - every other estimate must agree within **0.1 point**.
+
+    If the rule fails, that computer's comparisons are re-run on the home computer.
+  - The A3 exact-repeat check draws its comparisons from those made on the home computer.
+- **No GPU backend.** The models are many small gradient-boosting fits that scikit-learn runs on the CPU. GPU versions (cuML, XGBoost-CUDA) are different algorithms or not deterministic, and would change the numbers. The only GPU step, the rung-3 embeddings, was already done in Step 5.

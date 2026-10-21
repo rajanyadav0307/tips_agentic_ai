@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import pandas as pd
 
@@ -20,10 +21,16 @@ class StudyData:
     other_ai: pd.DataFrame
     embeddings: pd.DataFrame | None
     comparisons: list[Comparison]
+    text: pd.DataFrame | None = None  # cached report-text numbers (amendment A9)
+
+
+def text_path(cfg: Config) -> Path:
+    """Where the cached report-text numbers live (amendment A9)."""
+    return cfg.path("onetry_data") / "features" / "text_svd.parquet"
 
 
 def load(cfg: Config, qualifying_only: bool = True) -> StudyData:
-    """Load the clean tries, features and the fixed list of comparisons."""
+    """Load the clean tries, features, cached text (if built) and the comparisons."""
     base = cfg.path("onetry_data")
     tries = pd.read_parquet(base / "clean" / "tries.parquet")
     bugs = pd.read_parquet(base / "clean" / "bugs.parquet", columns=["dataset", "bug_id", "report"])
@@ -41,6 +48,7 @@ def load(cfg: Config, qualifying_only: bool = True) -> StudyData:
         other_ai=pd.read_parquet(feats / "other_ai.parquet"),
         embeddings=pd.read_parquet(emb_path) if emb_path.is_file() else None,
         comparisons=comps,
+        text=pd.read_parquet(text_path(cfg)) if text_path(cfg).is_file() else None,
     )
 
 
@@ -50,8 +58,12 @@ def with_features(
     s: StudyData,
     other_ai: pd.DataFrame | None = None,
     embeddings: bool = False,
+    text: bool = False,
 ) -> pd.DataFrame:
-    """Attach every rung's features to a one-try copy (one row per bug)."""
+    """Attach every rung's features to a one-try copy (one row per bug).
+
+    ``text=True`` adds the cached report-text numbers ``txt_*`` (amendment A9).
+    """
     bf = s.bug_features[s.bug_features.dataset == c.dataset].drop(columns="dataset")
     rep = s.reports[s.reports.dataset == c.dataset].drop(columns="dataset")
     oa = other_ai if other_ai is not None else s.other_ai
@@ -61,6 +73,13 @@ def with_features(
     if embeddings and s.embeddings is not None:
         emb = s.embeddings[s.embeddings.dataset == c.dataset].drop(columns="dataset")
         d = d.merge(emb, on="bug_id", how="left")
+    if text:
+        if s.text is None:
+            raise FileNotFoundError("cached report text missing; build it with text_table()")
+        txt = s.text[s.text.dataset == c.dataset].drop(columns="dataset")
+        d = d.merge(txt, on="bug_id", how="left")
+        cols = [x for x in d.columns if x.startswith("txt_")]
+        d[cols] = d[cols].fillna(0.0)
     d["report"] = d["report"].fillna("")
     for col, fill in (
         ("other_rate", -1.0),
