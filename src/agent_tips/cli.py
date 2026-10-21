@@ -113,6 +113,14 @@ def _onetry(args: argparse.Namespace) -> int:
         from agent_tips.onetry import collect
 
         print(f"report: {collect.run(cfg, rehash=not args.quick)}")
+    elif args.step == "clean":
+        from agent_tips.onetry import clean
+
+        print(f"report: {clean.run(cfg)}")
+    elif args.step == "eda":
+        from agent_tips.onetry import eda
+
+        print(f"report: {eda.run(cfg)}")
     return 0
 
 
@@ -136,7 +144,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub.add_parser("figures", help="Step 8: paper figures, tables and number macros")
     ot = sub.add_parser("onetry", help="Paper 2 (one-try study): run one step of its procedure")
-    ot.add_argument("step", choices=["collect"], help="collect: verify sources and extract")
+    ot.add_argument(
+        "step",
+        choices=["collect", "clean", "eda"],
+        help="collect: verify sources and extract (Step 2); clean: cleaning rules (Step 3); "
+        "eda: exploration and comparison inventory (Step 4)",
+    )
     ot.add_argument("--quick", action="store_true", help="collect: check sizes, skip re-hashing")
     ra = sub.add_parser("run-all", help="Steps 2-8 in order (download through figures)")
     ra.add_argument("--no-repro", action="store_true", help="skip the reproducibility check")

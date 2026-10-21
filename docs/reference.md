@@ -48,6 +48,14 @@
 
 ::: agent_tips.onetry.collect
 
+::: agent_tips.onetry.db
+
+::: agent_tips.onetry.clean
+
+::: agent_tips.onetry.comparisons
+
+::: agent_tips.onetry.eda
+
 ::: agent_tips.utils.device
 
 ::: agent_tips.utils.seed

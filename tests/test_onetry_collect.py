@@ -57,6 +57,11 @@ def test_extract_matches_sources_and_writes_report(big_project: Config) -> None:
         ).fetchall()
     }
     assert "swe-agent-llama-70b" in setups and "newer_ai_nebius" in setups
+    cats = con.execute(
+        f"SELECT DISTINCT category FROM read_parquet('{(raw / 'tries.parquet').as_posix()}') "
+        "WHERE dataset = 'newer_ai_nvidia'"
+    ).fetchall()
+    assert ("bug",) in cats
     assert "sweagent/minimax_m25/swe-rebench-v2" in setups
     # one report text per bug in these fixtures (every try of a bug sees the same text)
     n_reports = con.execute(

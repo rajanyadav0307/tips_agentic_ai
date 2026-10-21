@@ -16,6 +16,8 @@ nav:
   - "Paper 2: one-try study":
       - 1. Problem definition: one_try/01_problem.md
       - 2. Data collection: one_try/02_data_collection.md
+      - 3. Data cleaning: one_try/03_cleaning.md
+      - 4. Exploration (EDA): one_try/04_eda.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md

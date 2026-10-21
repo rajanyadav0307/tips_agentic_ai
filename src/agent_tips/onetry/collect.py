@@ -220,6 +220,7 @@ def extract(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
 
     # Big sources are processed one AI setup (one raw glob) at a time to bound memory.
     try_parts: list[Path] = []
+    cat_parts: list[Path] = []
     report_parts: list[Path] = []
     fix_parts: list[Path] = []
     for k in present:
@@ -231,6 +232,15 @@ def extract(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
             tp = tmp / f"tries_{k}_{i}.parquet"
             con.execute(f"COPY ({_tries_sql(cfg, k, piece)}) TO '{tp.as_posix()}' (FORMAT parquet)")
             try_parts.append(tp)
+            if k == "newer_ai_nvidia":  # task type (bug fix, feature request, ...) per try
+                cp = tmp / f"category_{i}.parquet"
+                con.execute(
+                    f"COPY (SELECT 'newer_ai_nvidia:' || {sources._nvidia_subset()} || ':' || "
+                    "trajectory_id AS try_id, metadata.category AS category "
+                    f"FROM read_parquet({_src(piece)}, filename = true, union_by_name = true)) "
+                    f"TO '{cp.as_posix()}' (FORMAT parquet)"
+                )
+                cat_parts.append(cp)
             log(f"extract steps: {name}")
             p = out / "steps" / f"{name}.parquet"
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -251,10 +261,15 @@ def extract(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
                 fix_parts.append(fp)
     log("combine tries, bug reports and human fixes")
     files["tries.parquet"] = out / "tries.parquet"
+    cats = (
+        f"SELECT * FROM read_parquet({_src([p.as_posix() for p in cat_parts])})"
+        if cat_parts
+        else "SELECT CAST(NULL AS VARCHAR) AS try_id, CAST(NULL AS VARCHAR) AS category"
+    )
     con.execute(
-        f"COPY (SELECT * FROM read_parquet({_src([p.as_posix() for p in try_parts])}, "
-        f"union_by_name = true) ORDER BY try_id) TO '{files['tries.parquet'].as_posix()}' "
-        "(FORMAT parquet)"
+        f"COPY (SELECT t.*, c.category FROM read_parquet({_src([p.as_posix() for p in try_parts])}, "
+        f"union_by_name = true) t LEFT JOIN ({cats}) c USING (try_id) ORDER BY try_id) "
+        f"TO '{files['tries.parquet'].as_posix()}' (FORMAT parquet)"
     )
     files["reports.parquet"] = out / "reports.parquet"
     con.execute(
@@ -276,7 +291,7 @@ def extract(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
             f"COPY (SELECT * FROM ({' UNION ALL '.join(fixes)}) ORDER BY source, issue_id) "
             f"TO '{files['fixes.parquet'].as_posix()}' (FORMAT parquet)"
         )
-    for p in [*try_parts, *report_parts, *fix_parts]:
+    for p in [*try_parts, *cat_parts, *report_parts, *fix_parts]:
         p.unlink()
 
     manifest = {}
@@ -353,7 +368,7 @@ def write_report(cfg: Config, summary: dict[str, Any], path: Path | None = None)
         "| --- | --- | --- | --- | --- |",
     ]
     contents = {
-        "tries.parquet": "One row per try: bug ID, AI setup, outcome, exit status, steps, patch present, evaluation time (older AI), bug-text fingerprint",
+        "tries.parquet": "One row per try: bug ID, AI setup, outcome, exit status, steps, patch present, evaluation time (older AI), task type (NVIDIA), bug-text fingerprint",
         "reports.parquet": "One row per distinct bug-report text (the AI's first user message)",
         "fixes.parquet": "Human fix per bug: gold patches (older AI) and reference patches (NVIDIA)",
     }

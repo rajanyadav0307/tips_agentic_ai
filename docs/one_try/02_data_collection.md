@@ -32,7 +32,7 @@
 | `steps/newer_ai_nvidia/openhands__minimax_m25__swe-rebench-v2.parquet` | 2,552,116 | 0.56 GB | `c6fd19527658` | One row per action: tool, command, file path, start and end of the reply |
 | `steps/newer_ai_nvidia/openhands__qwen35_122b__swe-rebench-v2.parquet` | 3,774,255 | 0.76 GB | `6b7c4945c8ee` | One row per action: tool, command, file path, start and end of the reply |
 | `steps/newer_ai_nvidia/openhands__deepseek_v4_flash_0731__scale-swe.parquet` | 967,672 | 0.27 GB | `abb2d6029029` | One row per action: tool, command, file path, start and end of the reply |
-| `tries.parquet` | 402,043 | 30.3 MB | `57fafa145439` | One row per try: bug ID, AI setup, outcome, exit status, steps, patch present, evaluation time (older AI), bug-text fingerprint |
+| `tries.parquet` | 402,043 | 30.4 MB | `7b8efd936e54` | One row per try: bug ID, AI setup, outcome, exit status, steps, patch present, evaluation time (older AI), task type (NVIDIA), bug-text fingerprint |
 | `reports.parquet` | 85,204 | 73.6 MB | `b311b556cda1` | One row per distinct bug-report text (the AI's first user message) |
 | `fixes.parquet` | 47,569 | 0.19 GB | `356adef404a8` | Human fix per bug: gold patches (older AI) and reference patches (NVIDIA) |
 

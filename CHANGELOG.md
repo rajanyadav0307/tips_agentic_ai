@@ -8,6 +8,9 @@
 - Phase A:
   - Step 1: frozen problem definition in `docs/one_try/01_problem.md` (tag `one-try-plan-v1`);
   - Step 2: `agent-tips onetry collect` verifies all pinned sources (121 files) and extracts the study's own tables into `data/onetry/raw/`. It processes one AI setup at a time and caps memory, so it runs on a 16 GB laptop. Report: `docs/one_try/02_data_collection.md`.
+- Phase B:
+  - Step 3: `agent-tips onetry clean` applies three written rules (duplicates, unknown outcome, identical bug text) with a funnel. It re-runs Paper 1's validated labeler on the study's own data, strips the three bug-report wrappers used by the agent frameworks, and measures human-fix size. Report: `docs/one_try/03_cleaning.md`.
+  - Step 4: `agent-tips onetry eda` covers bug vs luck, agreement between AIs, report hints and a comparison inventory (54 qualifying comparisons, fixed for modelling). Report: `docs/one_try/04_eda.md`.
 
 ## [1.0.0] - 2026-10-20
 
