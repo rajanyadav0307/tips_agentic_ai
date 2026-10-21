@@ -121,6 +121,10 @@ def _onetry(args: argparse.Namespace) -> int:
         from agent_tips.onetry import eda
 
         print(f"report: {eda.run(cfg)}")
+    elif args.step == "features":
+        from agent_tips.onetry import features
+
+        print(f"report: {features.run(cfg, with_embeddings=args.embeddings)}")
     return 0
 
 
@@ -146,11 +150,14 @@ def build_parser() -> argparse.ArgumentParser:
     ot = sub.add_parser("onetry", help="Paper 2 (one-try study): run one step of its procedure")
     ot.add_argument(
         "step",
-        choices=["collect", "clean", "eda"],
+        choices=["collect", "clean", "eda", "features"],
         help="collect: verify sources and extract (Step 2); clean: cleaning rules (Step 3); "
-        "eda: exploration and comparison inventory (Step 4)",
+        "eda: exploration and comparison inventory (Step 4); features: Step 5",
     )
     ot.add_argument("--quick", action="store_true", help="collect: check sizes, skip re-hashing")
+    ot.add_argument(
+        "--embeddings", action="store_true", help="features: also compute rung-3 embeddings (GPU)"
+    )
     ra = sub.add_parser("run-all", help="Steps 2-8 in order (download through figures)")
     ra.add_argument("--no-repro", action="store_true", help="skip the reproducibility check")
     ra.set_defaults(only=None, verify=False, dry_run=False)

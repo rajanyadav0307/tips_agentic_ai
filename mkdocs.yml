@@ -18,6 +18,7 @@ nav:
       - 2. Data collection: one_try/02_data_collection.md
       - 3. Data cleaning: one_try/03_cleaning.md
       - 4. Exploration (EDA): one_try/04_eda.md
+      - 5. Features: one_try/05_features.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md

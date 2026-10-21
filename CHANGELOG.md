@@ -11,6 +11,9 @@
 - Phase B:
   - Step 3: `agent-tips onetry clean` applies three written rules (duplicates, unknown outcome, identical bug text) with a funnel. It re-runs Paper 1's validated labeler on the study's own data, strips the three bug-report wrappers used by the agent frameworks, and measures human-fix size. Report: `docs/one_try/03_cleaning.md`.
   - Step 4: `agent-tips onetry eda` covers bug vs luck, agreement between AIs, report hints and a comparison inventory (54 qualifying comparisons, fixed for modelling). Report: `docs/one_try/04_eda.md`.
+- Phase C:
+  - Step 5: `agent-tips onetry features` builds report facts, human-fix size, other AIs' fix rate (the studied setup is always left out) and an IRT difficulty fitted on other setups only; the report-text tool (TF-IDF → SVD) is fitted inside training folds. Optional `--embeddings` adds language-model embeddings (gpu extra, pinned model). Leak checks; report `docs/one_try/05_features.md`.
+  - Dependencies: `scikit-learn` added; `sentence-transformers` in the optional `gpu` extra.
 
 ## [1.0.0] - 2026-10-20
 
