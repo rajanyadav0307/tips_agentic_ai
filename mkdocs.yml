@@ -13,11 +13,16 @@ nav:
       - 6. Results: 06_results.md
       - 7. Evaluation (robustness): 07_evaluation.md
       - 8. Paper figures and tables: 08_tables.md
+  - "Paper 2: one-try study":
+      - 1. Problem definition: one_try/01_problem.md
+      - 2. Data collection: one_try/02_data_collection.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md
   - Project:
       - Plan: project/PROJECT_PLAN.md
+      - Plan for Paper 2 (one-try study): project/ONE_TRY_STUDY_PLAN.md
+      - Machine learning brainstorm: project/ML_BRAINSTORM.md
       - Proposal and results: project/DS_PROJECT_PROPOSAL.md
       - Project options: project/PROJECT_OPTIONS.md
       - Datasets: project/DATASET_OPTIONS.md

@@ -46,6 +46,8 @@
 
 ::: agent_tips.viz.tables
 
+::: agent_tips.onetry.collect
+
 ::: agent_tips.utils.device
 
 ::: agent_tips.utils.seed

@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased] (branch `one-try-study`, Paper 2)
+
+### Added
+
+- Paper 2, the one-try study. It runs its own standard data science procedure (plan: `docs/project/ONE_TRY_STUDY_PLAN.md`).
+- Phase A:
+  - Step 1: frozen problem definition in `docs/one_try/01_problem.md` (tag `one-try-plan-v1`);
+  - Step 2: `agent-tips onetry collect` verifies all pinned sources (121 files) and extracts the study's own tables into `data/onetry/raw/`. It processes one AI setup at a time and caps memory, so it runs on a 16 GB laptop. Report: `docs/one_try/02_data_collection.md`.
+
 ## [1.0.0] - 2026-10-20
 
 ### Added

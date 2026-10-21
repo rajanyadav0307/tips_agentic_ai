@@ -106,6 +106,16 @@ def _run_all(args: argparse.Namespace) -> int:
     return 0
 
 
+def _onetry(args: argparse.Namespace) -> int:
+    """Paper 2 (one-try study): run one step of its procedure."""
+    cfg = load_config()
+    if args.step == "collect":
+        from agent_tips.onetry import collect
+
+        print(f"report: {collect.run(cfg, rehash=not args.quick)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(prog="agent-tips", description=__doc__)
@@ -125,6 +135,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-repro", action="store_true", help="skip the two-run reproducibility check"
     )
     sub.add_parser("figures", help="Step 8: paper figures, tables and number macros")
+    ot = sub.add_parser("onetry", help="Paper 2 (one-try study): run one step of its procedure")
+    ot.add_argument("step", choices=["collect"], help="collect: verify sources and extract")
+    ot.add_argument("--quick", action="store_true", help="collect: check sizes, skip re-hashing")
     ra = sub.add_parser("run-all", help="Steps 2-8 in order (download through figures)")
     ra.add_argument("--no-repro", action="store_true", help="skip the reproducibility check")
     ra.set_defaults(only=None, verify=False, dry_run=False)
@@ -152,6 +165,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _figures(args)
     if args.command == "run-all":
         return _run_all(args)
+    if args.command == "onetry":
+        return _onetry(args)
     raise AssertionError(f"unhandled command {args.command}")  # argparse prevents this
 
 

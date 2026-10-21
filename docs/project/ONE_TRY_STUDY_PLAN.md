@@ -258,7 +258,7 @@ Each step is one command, `agent-tips onetry <step>`. `agent-tips onetry run-all
 | Phase | Steps | Checkpoint (owner approves before the next phase) |
 | --- | --- | --- |
 | 0 | Setup | Branch `one-try-study` created ✅. Paper 1's local work stays unpublished until the owner decides |
-| A | 1 Problem, 2 Collection | Rules frozen and tagged; data sources verified and extracted |
+| A | 1 Problem, 2 Collection | Rules frozen and tagged; data sources verified and extracted. ✅ Done 2026-10-20; awaiting the owner's review |
 | B | 3 Cleaning, 4 EDA | Clean tables with funnel; EDA report and comparison inventory |
 | C | 5 Features | Feature tables with leakage checks |
 | D | 6 Modelling, 7 Evaluation | Answer key, methods, full results, robustness |

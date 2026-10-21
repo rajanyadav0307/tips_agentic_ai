@@ -7,6 +7,8 @@ paths:
   processed: data/processed
   results: outputs/results
   figures: outputs/figures
+  onetry_data: data/onetry        # Paper 2 (one-try study): its own collected, cleaned and feature tables
+  onetry_results: outputs/onetry
 
 # Every dataset is pinned to a Hugging Face revision (commit) recorded on 2026-10-20.
 # `patterns` selects the files to download (glob, relative to the repository root).
@@ -43,9 +45,22 @@ datasets:
 
 analysis:
   bootstrap_reps: 2000
+  memory_limit: 8GB    # DuckDB memory cap; larger jobs spill to disk
+  threads: 4           # fewer threads = less memory per raw-data scan
   permutation_reps: 1000
   fdr_q: 0.05
   equivalence_margin: 0.02   # ±2 points, used to claim "no meaningful difference"
 
 compute:
   device: auto   # auto | cpu | cuda | mps
+
+# Paper 2: the one-try study (frozen rules in docs/one_try/01_problem.md)
+onetry:
+  sources: [older_ai, newer_ai_nebius, newer_ai_nvidia, gold_extra, gold_dev]
+  draws: 20            # one-try copies per comparison (precision check may raise this to 40)
+  folds: 5             # cross-fitting folds, split by bug
+  margin: 0.02         # ±2 points
+  min_bugs: 100        # bugs with both choices needed for a comparison
+  bootstrap_reps: 2000
+  memory_limit: 8GB    # DuckDB memory cap; larger jobs spill to disk
+  threads: 4           # fewer threads = less memory per raw-data scan

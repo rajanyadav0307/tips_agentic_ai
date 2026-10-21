@@ -7,6 +7,7 @@ build/
 dist/
 
 # Tooling caches
+.tmp/            # DuckDB spill files (left behind if a job is stopped)
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
