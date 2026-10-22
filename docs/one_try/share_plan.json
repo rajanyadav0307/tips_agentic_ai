@@ -4,86 +4,70 @@
       "speed": 1.0,
       "jobs": 8,
       "home": true
-    },
-    "ryzen9": {
-      "speed": 0.55,
-      "jobs": 7
-    },
-    "ryzen3": {
-      "speed": 0.2,
-      "jobs": 3
     }
   },
   "comparisons": {
     "mac": [
+      "newer_ai_nebius|think_first",
       "older_ai|first_find_file",
       "older_ai|first_grep",
+      "older_ai|first_ls",
+      "older_ai|first_open",
+      "older_ai|reproduce_first",
       "older_ai|rerun_after_fix",
       "older_ai|suite_after_fix",
+      "openhands/deepseek_v4_flash_0731/scale-swe|cleanup",
+      "openhands/deepseek_v4_flash_0731/scale-swe|first_move",
+      "openhands/deepseek_v4_flash_0731/scale-swe|rerun_after_fix",
       "openhands/deepseek_v4_flash_0731/scale-swe|run_after_fix",
+      "openhands/deepseek_v4_flash_0731/scale-swe|suite_after_fix",
+      "openhands/deepseek_v4_flash_0731/scale-swe|suite_before_fix",
+      "openhands/deepseek_v4_flash_0731/scale-swe|test_first",
+      "openhands/deepseek_v4_flash_0731/scale-swe|tests_after_fix",
       "openhands/minimax_m25/swe-rebench-v2|cleanup",
+      "openhands/minimax_m25/swe-rebench-v2|first_move",
       "openhands/minimax_m25/swe-rebench-v2|rerun_after_fix",
+      "openhands/minimax_m25/swe-rebench-v2|suite_after_fix",
       "openhands/minimax_m25/swe-rebench-v2|suite_before_fix",
       "openhands/minimax_m25/swe-rebench-v2|test_first",
       "openhands/minimax_m25/swe-rebench-v2|tests_after_fix",
       "openhands/qwen35_122b/swe-rebench-v2|cleanup",
+      "openhands/qwen35_122b/swe-rebench-v2|first_move",
+      "openhands/qwen35_122b/swe-rebench-v2|rerun_after_fix",
+      "openhands/qwen35_122b/swe-rebench-v2|suite_after_fix",
       "openhands/qwen35_122b/swe-rebench-v2|suite_before_fix",
+      "openhands/qwen35_122b/swe-rebench-v2|test_first",
       "openhands/qwen35_122b/swe-rebench-v2|tests_after_fix",
       "sweagent/minimax_m25/swe-rebench-v2|cleanup",
+      "sweagent/minimax_m25/swe-rebench-v2|first_move",
       "sweagent/minimax_m25/swe-rebench-v2|rerun_after_fix",
+      "sweagent/minimax_m25/swe-rebench-v2|suite_after_fix",
       "sweagent/minimax_m25/swe-rebench-v2|suite_before_fix",
       "sweagent/minimax_m25/swe-rebench-v2|test_first",
       "sweagent/minimax_m25/swe-rebench-v2|tests_after_fix",
       "sweagent/qwen35_122b/swe-rebench-v2|cleanup",
-      "sweagent/qwen35_122b/swe-rebench-v2|tests_after_fix",
-      "sweagent/qwen36_27b/scale-swe|suite_after_fix",
-      "sweagent/qwen36_27b/scale-swe|suite_before_fix",
-      "sweagent/qwen36_27b/scale-swe|tests_after_fix",
-      "sweagent/qwen36_27b/swe-rebench-v2|suite_before_fix"
-    ],
-    "ryzen9": [
-      "older_ai|reproduce_first",
-      "openhands/deepseek_v4_flash_0731/scale-swe|cleanup",
-      "openhands/deepseek_v4_flash_0731/scale-swe|first_move",
-      "openhands/deepseek_v4_flash_0731/scale-swe|test_first",
-      "openhands/deepseek_v4_flash_0731/scale-swe|tests_after_fix",
-      "openhands/minimax_m25/swe-rebench-v2|first_move",
-      "openhands/minimax_m25/swe-rebench-v2|suite_after_fix",
-      "openhands/qwen35_122b/swe-rebench-v2|first_move",
-      "openhands/qwen35_122b/swe-rebench-v2|rerun_after_fix",
-      "openhands/qwen35_122b/swe-rebench-v2|test_first",
-      "sweagent/minimax_m25/swe-rebench-v2|first_move",
-      "sweagent/minimax_m25/swe-rebench-v2|suite_after_fix",
       "sweagent/qwen35_122b/swe-rebench-v2|rerun_after_fix",
       "sweagent/qwen35_122b/swe-rebench-v2|suite_after_fix",
       "sweagent/qwen35_122b/swe-rebench-v2|suite_before_fix",
       "sweagent/qwen35_122b/swe-rebench-v2|test_first",
+      "sweagent/qwen35_122b/swe-rebench-v2|tests_after_fix",
       "sweagent/qwen36_27b/scale-swe|rerun_after_fix",
+      "sweagent/qwen36_27b/scale-swe|suite_after_fix",
+      "sweagent/qwen36_27b/scale-swe|suite_before_fix",
+      "sweagent/qwen36_27b/scale-swe|test_first",
+      "sweagent/qwen36_27b/scale-swe|tests_after_fix",
+      "sweagent/qwen36_27b/swe-rebench-v2|cleanup",
       "sweagent/qwen36_27b/swe-rebench-v2|rerun_after_fix",
       "sweagent/qwen36_27b/swe-rebench-v2|suite_after_fix",
+      "sweagent/qwen36_27b/swe-rebench-v2|suite_before_fix",
       "sweagent/qwen36_27b/swe-rebench-v2|test_first",
       "sweagent/qwen36_27b/swe-rebench-v2|tests_after_fix"
-    ],
-    "ryzen3": [
-      "newer_ai_nebius|think_first",
-      "older_ai|first_ls",
-      "older_ai|first_open",
-      "openhands/deepseek_v4_flash_0731/scale-swe|rerun_after_fix",
-      "openhands/deepseek_v4_flash_0731/scale-swe|suite_after_fix",
-      "openhands/deepseek_v4_flash_0731/scale-swe|suite_before_fix",
-      "openhands/qwen35_122b/swe-rebench-v2|suite_after_fix",
-      "sweagent/qwen36_27b/scale-swe|test_first",
-      "sweagent/qwen36_27b/swe-rebench-v2|cleanup"
     ]
   },
   "share_of_work": {
-    "mac": 0.572,
-    "ryzen9": 0.313,
-    "ryzen3": 0.114
+    "mac": 1.0
   },
   "relative_finish": {
-    "mac": 0.572,
-    "ryzen9": 0.57,
-    "ryzen3": 0.572
+    "mac": 1.0
   }
 }

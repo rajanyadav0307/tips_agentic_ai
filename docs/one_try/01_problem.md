@@ -281,3 +281,4 @@ Timing on the largest comparison (5,514 bugs), per draw: about 30 s for the text
     If the rule fails, that computer's comparisons are re-run on the home computer.
   - The A3 exact-repeat check draws its comparisons from those made on the home computer.
 - **No GPU backend.** The models are many small gradient-boosting fits that scikit-learn runs on the CPU. GPU versions (cuML, XGBoost-CUDA) are different algorithms or not deterministic, and would change the numbers. The only GPU step, the rung-3 embeddings, was already done in Step 5.
+- **Decision (2026-10-21, before any result was scored):** the whole run is done on the home computer (Apple M4). `docs/one_try/share_plan.json` assigns all 54 comparisons to it, so the cross-computer check is not needed. The sharing tools stay in the code for anyone reproducing the study on several computers.

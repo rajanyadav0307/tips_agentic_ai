@@ -72,11 +72,14 @@ def task_cost(s: data.StudyData, cid: str, key_bugs: int, p: ev.Params) -> float
     return key_bugs * key + all_bugs * p.secondary_draws * 4.5
 
 
-def plan(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
+def plan(
+    cfg: Config, only: str | None = None, log: Callable[[str], None] = print
+) -> dict[str, Any]:
     """Split the comparisons across the machines and save the plan.
 
     Sealed comparisons go to the home machine. The rest are placed largest
-    first on the machine that would finish soonest (load ÷ speed).
+    first on the machine that would finish soonest (load ÷ speed). With
+    ``only``, every comparison goes to that one machine.
     """
     s = ev._study(cfg)
     p = ev.Params.from_config(cfg)
@@ -84,10 +87,14 @@ def plan(cfg: Config, log: Callable[[str], None] = print) -> dict[str, Any]:
     size = dict(zip(keys.cid, keys.key_bugs, strict=True))
     cost = {c.cid: task_cost(s, c.cid, int(size[c.cid]), p) for c in s.comparisons}
     ms = machines(cfg)
+    if only is not None:
+        if only not in ms:
+            raise KeyError(f"unknown machine {only!r}; the config has {sorted(ms)}")
+        ms = {only: {**ms[only], "home": True}}
     load = dict.fromkeys(ms, 0.0)
     out: dict[str, list[str]] = {m: [] for m in ms}
     sealed = set(ev.sealed_cids(cfg))
-    h = home(cfg)
+    h = only or home(cfg)
     for cid in sorted(sealed):
         out[h].append(cid)
         load[h] += cost[cid]

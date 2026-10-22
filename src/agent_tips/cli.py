@@ -148,7 +148,7 @@ def _onetry_share(args: argparse.Namespace, cfg: Any) -> int:
         print(f"onetry {args.step} needs --machine (one of {sorted(share.machines(cfg))})")
         return 2
     if args.step == "plan":
-        share.plan(cfg)
+        share.plan(cfg, only=args.machine)
     elif args.step == "run":
         share.run(cfg, args.machine, jobs=args.jobs)
         left = share.missing(cfg, share.assigned(cfg, args.machine))
@@ -212,7 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
         "crosscheck (re-run a few tasks of the other machines here)",
     )
     ot.add_argument("file", nargs="?", help="merge: the results zip to add")
-    ot.add_argument("--machine", help="run/bundle/pack: which computer (see the config)")
+    ot.add_argument(
+        "--machine",
+        help="run/bundle/pack: which computer (see the config); plan: put all work on it",
+    )
     ot.add_argument("--jobs", type=int, help="run: parallel tasks (default from the config)")
     ot.add_argument("--quick", action="store_true", help="collect: check sizes, skip re-hashing")
     ot.add_argument(

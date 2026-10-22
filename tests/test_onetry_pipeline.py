@@ -45,6 +45,8 @@ def test_steps_2_to_7_end_to_end(big_project: Config, tmp_path: Path) -> None:
 
     # Step 7 shared across two computers (amendment A9): plan, run each share,
     # move the partner's results through a zip, check them here, then score.
+    single = share.plan(cfg, only="here", log=_quiet)
+    assert list(single["comparisons"]) == ["here"]
     plan = share.plan(cfg, log=_quiet)
     assert sorted(sum(plan["comparisons"].values(), [])) == sorted(
         pd.read_parquet(cfg.path("onetry_results") / "answer_keys.parquet").cid
