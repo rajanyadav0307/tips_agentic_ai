@@ -20,6 +20,7 @@ nav:
       - 4. Exploration (EDA): one_try/04_eda.md
       - 5. Features: one_try/05_features.md
       - 6. Modelling: one_try/06_modelling.md
+      - 7. Evaluation: one_try/07_evaluation.md
   - Data cards:
       - Older AI (Nebius SWE-agent): data/older_ai.md
       - Newer AI (Nebius OpenHands): data/newer_ai_nebius.md
