@@ -29,6 +29,7 @@ secondary scores in :mod:`agent_tips.onetry.extra`.
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import time
@@ -149,6 +150,7 @@ def _text(
     ids = tuple(d.bug_id)
     hit = _TOKENS.get((c.cid, key_only))
     if hit is None or hit[0] != ids:
+        _TOKENS.clear()  # keep one comparison's words only: they are large
         _TOKENS[(c.cid, key_only)] = hit = (ids, tokenize(d.report))
     return cr.text_folds(d, folds, 100, draw, hit[1])
 
@@ -294,7 +296,9 @@ def run_task(
             _all_draw(s, c, draw, p, out)
         else:
             _ktry(s, c, p, out)
-    return out.frames()
+    frames = out.frames()
+    gc.collect()  # the per-fold text models are large; free them before the next task
+    return frames
 
 
 def run_unit(cfg: Config, cid: str, p: Params) -> pd.DataFrame:
