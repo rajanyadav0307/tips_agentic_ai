@@ -54,7 +54,7 @@ from agent_tips.eda.charts import COLORS  # noqa: E402
 from agent_tips.onetry import corrections as cr  # noqa: E402
 from agent_tips.onetry import data, extra  # noqa: E402
 from agent_tips.onetry.comparisons import NEBIUS, NVIDIA, OLDER  # noqa: E402
-from agent_tips.onetry.features import other_ai_rates, text_table  # noqa: E402
+from agent_tips.onetry.features import other_ai_rates, text_table, tokenize  # noqa: E402
 from agent_tips.onetry.simulate import (  # noqa: E402
     k_try_answer,
     k_try_copy,
@@ -92,6 +92,7 @@ class Params:
     secondary_draws: int = 5
     folds: int = 5
     model_threads: int = 1
+    cached_text: bool = False  # A9: True = one text model per dataset (failed the pass rule)
     jobs: int = 8
     h4_ks: tuple[int, ...] = (1, 2, 4)
     k_tries: tuple[int, ...] = (2, 3, 5, 10)
@@ -111,6 +112,7 @@ class Params:
 # ---------------------------------------------------------------- one unit of work
 
 _STUDY: dict[str, data.StudyData] = {}
+_TOKENS: dict[tuple[str, bool], tuple[tuple[str, ...], list[list[str]]]] = {}
 
 
 def _study(cfg: Config) -> data.StudyData:
@@ -132,6 +134,23 @@ def prepare_text(cfg: Config, log: Callable[[str], None] = print) -> Path:
         text_table(reports.assign(report=reports.report.fillna(""))).to_parquet(path, index=False)
         _STUDY.clear()
     return path
+
+
+def _text(
+    c: Any, d: pd.DataFrame, key_only: bool, draw: int, folds: Any, p: Params
+) -> list[dict[str, np.ndarray]] | None:
+    """Report-text numbers of one draw, fitted inside each training fold (frozen in Step 1).
+
+    The word-splitting is done once per comparison and worker and reused (A6);
+    ``None`` when the cached text of amendment A9 is used instead.
+    """
+    if p.cached_text:
+        return None
+    ids = tuple(d.bug_id)
+    hit = _TOKENS.get((c.cid, key_only))
+    if hit is None or hit[0] != ids:
+        _TOKENS[(c.cid, key_only)] = hit = (ids, tokenize(d.report))
+    return cr.text_folds(d, folds, 100, draw, hit[1])
 
 
 class _Out:
@@ -178,12 +197,14 @@ def _key_draw(s: data.StudyData, c: Any, draw: int, p: Params, out: _Out) -> Non
     main, check, forest = draw < p.draws, draw < p.check_draws, draw < p.forest_draws
     has_emb = s.embeddings is not None
     copy = one_try_copy(c, s.tries, draw)
-    d = data.with_features(copy, c, s, embeddings=check and has_emb, text=True)
+    d = data.with_features(copy, c, s, embeddings=check and has_emb, text=p.cached_text)
     n, bugs = len(d), d.bug_id
     folds = cr.make_folds(n, p.folds, draw)
+    text = _text(c, d, True, draw, folds, p)
 
     def ladder_rung(name: str, frame: pd.DataFrame, rung: int, learner: str = "gbm") -> None:
-        ry, rt = cr.dml_parts(frame, rung, draw, learner=learner, folds=folds)
+        assert frame.bug_id.tolist() == bugs.tolist()  # same rows, so the text folds fit
+        ry, rt = cr.dml_parts(frame, rung, draw, learner=learner, folds=folds, text=text)
         out.add(name, cr.partial_out(ry, rt), n)
         if main and learner == "gbm":
             out.keep(name, bugs, ry, rt)
@@ -206,7 +227,7 @@ def _key_draw(s: data.StudyData, c: Any, draw: int, p: Params, out: _Out) -> Non
         if has_emb:
             ladder_rung("rung3", d, 3)
         for r in (2, 4, 5):
-            psi, _ = cr.aipw_parts(d, r, draw, folds=folds)
+            psi, _ = cr.aipw_parts(d, r, draw, folds=folds, text=text)
             out.add(f"rung{r}_aipw", cr.mean_result(psi), n)
             out.keep(f"rung{r}_aipw", bugs, psi, np.ones(n))
     if forest:
@@ -226,16 +247,18 @@ def _key_draw(s: data.StudyData, c: Any, draw: int, p: Params, out: _Out) -> Non
 
 def _all_draw(s: data.StudyData, c: Any, draw: int, p: Params, out: _Out) -> None:
     """One draw of one-try copies of all bugs (A7), with the trimmed versions (A8)."""
-    d = data.with_features(one_try_copy(c, s.tries, draw, key_only=False), c, s, text=True)
+    copy = one_try_copy(c, s.tries, draw, key_only=False)
+    d = data.with_features(copy, c, s, text=p.cached_text)
     n, bugs = len(d), d.bug_id
     folds = cr.make_folds(n, p.folds, draw)
+    text = _text(c, d, False, draw, folds, p)
     out.add("rung0_allbugs", cr.simple(d), n)
     out.add("rung1_allbugs", cr.linear(d), n)
     for r in (2, 5):
-        ry, rt = cr.dml_parts(d, r, draw, folds=folds)
+        ry, rt = cr.dml_parts(d, r, draw, folds=folds, text=text)
         out.add(f"rung{r}_allbugs", cr.partial_out(ry, rt), n)
         out.keep(f"rung{r}_allbugs", bugs, ry, rt)
-    psi, prop = cr.aipw_parts(d, 5, draw, folds=folds)
+    psi, prop = cr.aipw_parts(d, 5, draw, folds=folds, text=text)
     out.add("rung5_aipw_allbugs", cr.mean_result(psi), n)
     if np.isfinite(prop).all():
         keep = (prop >= TRIM[0]) & (prop <= TRIM[1])
@@ -340,7 +363,8 @@ def run_all(
 
     ``only`` limits the run to some comparisons (one machine's share, A9).
     """
-    prepare_text(cfg, log)
+    if p.cached_text:
+        prepare_text(cfg, log)
     res = cfg.path("onetry_results")
     (res / "units").mkdir(parents=True, exist_ok=True)
     s = _study(cfg)

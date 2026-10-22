@@ -54,6 +54,7 @@ analysis:
   secondary_draws: 5   # copies drawn from all bugs (A7, replacing A2)
   jobs: 8              # tasks run in parallel on one machine (A9: one task = comparison x draw)
   model_threads: 1     # threads per task (A9)
+  cached_text: false   # A9: per-fold text model restored after the pass rule failed
   # A9: the study's computers. speed = rough relative multi-core speed (balancing only);
   # jobs = parallel tasks (about 1 GB of memory each); home = made the sealed first run.
   machines:
@@ -86,6 +87,7 @@ onetry:
   secondary_draws: 5   # copies drawn from all bugs (A7, replacing A2)
   jobs: 8              # tasks run in parallel on one machine (A9: one task = comparison x draw)
   model_threads: 1     # threads per task (A9)
+  cached_text: false   # A9: per-fold text model restored after the pass rule failed
   # A9: the study's computers. speed = rough relative multi-core speed (balancing only);
   # jobs = parallel tasks (about 1 GB of memory each); home = made the sealed first run.
   machines:

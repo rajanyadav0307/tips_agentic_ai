@@ -282,3 +282,11 @@ Timing on the largest comparison (5,514 bugs), per draw: about 30 s for the text
   - The A3 exact-repeat check draws its comparisons from those made on the home computer.
 - **No GPU backend.** The models are many small gradient-boosting fits that scikit-learn runs on the CPU. GPU versions (cuML, XGBoost-CUDA) are different algorithms or not deterministic, and would change the numbers. The only GPU step, the rung-3 embeddings, was already done in Step 5.
 - **Decision (2026-10-21, before any result was scored):** the whole run is done on the home computer (Apple M4). `docs/one_try/share_plan.json` assigns all 54 comparisons to it, so the cross-computer check is not needed. The sharing tools stay in the code for anyone reproducing the study on several computers.
+- **Pass rule result (2026-10-21, before any result was scored): failed. The per-fold text model is restored.**
+  - On the 15 sealed comparisons:
+    - rungs 0 and 1 were identical;
+    - 58 of the 60 ML checks agreed within 0.3 points;
+    - rung 2 differed by 0.47 points on two comparisons.
+  - As set out above, the cached text is dropped (`cached_text: false`). The report text is again fitted inside each training fold, exactly as frozen in Step 1, with the word-splitting reused per comparison (A6).
+  - Spot checks then reproduced the sealed estimates exactly (difference 0.0).
+  - The run is repeated in full. The 65% of the run done with cached text is kept in `outputs/onetry/cached_text_run/` as an exploratory comparison of the two text methods, and never used for H1–H4.

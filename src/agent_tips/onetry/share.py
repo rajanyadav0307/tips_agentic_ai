@@ -240,7 +240,8 @@ Expected: {n} comparisons. Memory: about 1 GB per parallel job ({jobs} jobs).
 
 def bundle(cfg: Config, machine: str, log: Callable[[str], None] = print) -> Path:
     """One zip for a partner machine: code, study data, answer keys and the plan."""
-    ev.prepare_text(cfg, log)
+    if ev.Params.from_config(cfg).cached_text:
+        ev.prepare_text(cfg, log)
     cids = assigned(cfg, machine)
     od, res = cfg.path("onetry_data"), cfg.path("onetry_results")
     rel = cfg.root.resolve()
